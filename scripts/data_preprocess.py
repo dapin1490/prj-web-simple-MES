@@ -16,9 +16,7 @@ PASS_FAIL_THRESHOLD = 1.0
 CSV_ENCODINGS = ("utf-8", "cp949", "euc-kr")
 INPUT_FILE_NAMES = {
     "customer_order": "MES_customer_order.csv",
-    "production_trend": "PRODUCTION_TREND.csv",
-    "lot_amount": "LOT_amount_preprocessed.xlsx",
-    "ccm_measure": "CCM_measure_preprocessed.xlsx",
+    "integrated_manufacture": "integrated_manufacture_data.csv",
 }
 OUTPUT_FILE_NAMES = {
     "products": "Products.csv",
@@ -32,20 +30,18 @@ OUTPUT_FILE_NAMES = {
 @dataclass
 class InputFrames:
     customer_order: pd.DataFrame
-    production_trend: pd.DataFrame
-    lot_amount: pd.DataFrame
-    ccm_measure: pd.DataFrame
+    integrated_manufacture: pd.DataFrame
 
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="원본 데이터를 백엔드 적재용 CSV로 전처리합니다."
+        description="통합 제조 데이터와 MES 주문 데이터를 백엔드 적재용 CSV로 변환합니다."
     )
     parser.add_argument(
         "--input-dir",
         type=Path,
         default=Path("data"),
-        help="원본 데이터 디렉터리 경로",
+        help="입력 데이터 디렉터리 경로",
     )
     parser.add_argument(
         "--output-dir",
@@ -60,7 +56,7 @@ def read_csv_with_fallback_encoding(file_path: Path) -> pd.DataFrame:
     latest_exception: Exception | None = None
     for encoding_name in CSV_ENCODINGS:
         try:
-            return pd.read_csv(file_path, encoding=encoding_name)
+            return pd.read_csv(file_path, encoding=encoding_name, low_memory=False)
         except Exception as error:
             latest_exception = error
     raise RuntimeError(f"CSV 파일을 읽지 못했습니다: {file_path}") from latest_exception
@@ -91,23 +87,14 @@ def to_int_series(raw_series: pd.Series) -> pd.Series:
 
 def load_input_frames(input_directory: Path) -> InputFrames:
     customer_order_path = input_directory / INPUT_FILE_NAMES["customer_order"]
-    production_trend_path = input_directory / INPUT_FILE_NAMES["production_trend"]
-    lot_amount_path = input_directory / INPUT_FILE_NAMES["lot_amount"]
-    ccm_measure_path = input_directory / INPUT_FILE_NAMES["ccm_measure"]
+    integrated_manufacture_path = input_directory / INPUT_FILE_NAMES["integrated_manufacture"]
 
-    for input_file_path in (
-        customer_order_path,
-        production_trend_path,
-        lot_amount_path,
-        ccm_measure_path,
-    ):
+    for input_file_path in (customer_order_path, integrated_manufacture_path):
         if not input_file_path.exists():
             raise FileNotFoundError(f"입력 파일이 없습니다: {input_file_path}")
 
     customer_order_frame = read_csv_with_fallback_encoding(customer_order_path)
-    production_trend_frame = read_csv_with_fallback_encoding(production_trend_path)
-    lot_amount_frame = pd.read_excel(lot_amount_path)
-    ccm_measure_frame = pd.read_excel(ccm_measure_path)
+    integrated_manufacture_frame = read_csv_with_fallback_encoding(integrated_manufacture_path)
 
     ensure_required_columns(
         "MES_customer_order.csv",
@@ -115,61 +102,61 @@ def load_input_frames(input_directory: Path) -> InputFrames:
         ["제품계층구조", "안전재고"],
     )
     ensure_required_columns(
-        "PRODUCTION_TREND.csv",
-        production_trend_frame,
-        ["LOT_NO", "RESOURCE_CD", "INSRT_DT", "TRD_TEMP_PV", "TRD_SPEED1"],
-    )
-    ensure_required_columns(
-        "LOT_amount_preprocessed.xlsx",
-        lot_amount_frame,
-        ["LOT번호", "공정코드", "염색길이(m)"],
-    )
-    ensure_required_columns(
-        "CCM_measure_preprocessed.xlsx",
-        ccm_measure_frame,
-        ["LOT번호", "검사차수", "염색색차 DE"],
+        "integrated_manufacture_data.csv",
+        integrated_manufacture_frame,
+        ["LOT_NO", "WC_CD", "RESOURCE_CD", "INSRT_DT", "SEQ_NO", "TRD_TEMP_PV", "TRD_SPEED1", "염색 가동 길이", "염색 색차 DE"],
     )
 
     return InputFrames(
         customer_order=customer_order_frame,
-        production_trend=production_trend_frame,
-        lot_amount=lot_amount_frame,
-        ccm_measure=ccm_measure_frame,
+        integrated_manufacture=integrated_manufacture_frame,
     )
 
 
 def build_reference_frames(
     input_frames: InputFrames,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    production_trend_frame = input_frames.production_trend.copy()
-    production_trend_frame["timestamp"] = pd.to_datetime(
-        production_trend_frame["INSRT_DT"], errors="coerce"
+    integrated_manufacture_frame = input_frames.integrated_manufacture.copy()
+    integrated_manufacture_frame["timestamp"] = pd.to_datetime(
+        integrated_manufacture_frame["INSRT_DT"], errors="coerce"
     )
-    production_trend_frame = production_trend_frame.dropna(subset=["timestamp"])
-    production_trend_frame["wo_id"] = production_trend_frame["LOT_NO"].astype(str).str.strip()
-    production_trend_frame["machine_id"] = (
-        production_trend_frame["RESOURCE_CD"].astype(str).str.strip()
+    integrated_manufacture_frame = integrated_manufacture_frame.dropna(subset=["timestamp"])
+    integrated_manufacture_frame["wo_id"] = integrated_manufacture_frame["LOT_NO"].astype(str).str.strip()
+    integrated_manufacture_frame["machine_id"] = (
+        integrated_manufacture_frame["RESOURCE_CD"].astype(str).str.strip()
     )
-    production_trend_frame["temp_pv"] = to_float_series(production_trend_frame["TRD_TEMP_PV"])
-    production_trend_frame["speed"] = to_int_series(production_trend_frame["TRD_SPEED1"])
+    integrated_manufacture_frame["temp_pv"] = to_float_series(integrated_manufacture_frame["TRD_TEMP_PV"])
+    integrated_manufacture_frame["speed"] = to_int_series(integrated_manufacture_frame["TRD_SPEED1"])
+    integrated_manufacture_frame["product_id"] = (
+        integrated_manufacture_frame["WC_CD"].astype(str).str.strip()
+    )
+    integrated_manufacture_frame["planned_qty"] = to_float_series(
+        integrated_manufacture_frame["염색 가동 길이"]
+    ).fillna(0.0)
+    integrated_manufacture_frame["inspection_step"] = to_float_series(
+        integrated_manufacture_frame["SEQ_NO"]
+    ).fillna(0.0)
+    integrated_manufacture_frame["color_de"] = to_float_series(
+        integrated_manufacture_frame["염색 색차 DE"]
+    )
 
-    lot_amount_frame = input_frames.lot_amount.copy()
-    lot_amount_frame["wo_id"] = lot_amount_frame["LOT번호"].astype(str).str.strip()
-    lot_amount_frame["product_id"] = lot_amount_frame["공정코드"].astype(str).str.strip()
-    lot_amount_frame["planned_qty"] = to_float_series(lot_amount_frame["염색길이(m)"]).fillna(0.0)
-    lot_amount_frame = lot_amount_frame[["wo_id", "product_id", "planned_qty"]].drop_duplicates("wo_id")
+    work_base_frame = (
+        integrated_manufacture_frame.sort_values(["wo_id", "timestamp"])
+        .drop_duplicates("wo_id", keep="first")[["wo_id", "product_id", "planned_qty"]]
+        .copy()
+    )
 
     first_log_date_by_lot = (
-        production_trend_frame.groupby("wo_id", as_index=False)["timestamp"]
+        integrated_manufacture_frame.groupby("wo_id", as_index=False)["timestamp"]
         .min()
         .rename(columns={"timestamp": "first_timestamp"})
     )
     first_log_date_by_lot["order_date"] = first_log_date_by_lot["first_timestamp"].dt.date
 
-    work_base_frame = lot_amount_frame.merge(first_log_date_by_lot, on="wo_id", how="left")
+    work_base_frame = work_base_frame.merge(first_log_date_by_lot, on="wo_id", how="left")
     work_base_frame = work_base_frame.dropna(subset=["order_date"])
 
-    return production_trend_frame, work_base_frame
+    return integrated_manufacture_frame, work_base_frame
 
 
 def create_products_frame(
@@ -229,14 +216,14 @@ def create_sales_orders_frame(work_base_frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def create_work_orders_frame(
-    work_base_frame: pd.DataFrame, sales_orders_frame: pd.DataFrame, production_trend_frame: pd.DataFrame
+    work_base_frame: pd.DataFrame, sales_orders_frame: pd.DataFrame, integrated_manufacture_frame: pd.DataFrame
 ) -> pd.DataFrame:
     order_id_by_date = {
         row.order_date: row.order_id for row in sales_orders_frame.itertuples(index=False)
     }
 
     machine_by_lot = (
-        production_trend_frame.groupby("wo_id", as_index=False)["machine_id"]
+        integrated_manufacture_frame.groupby("wo_id", as_index=False)["machine_id"]
         .agg(lambda series: series.mode().iat[0] if not series.mode().empty else series.iloc[0])
     )
 
@@ -248,8 +235,8 @@ def create_work_orders_frame(
     return work_orders_frame[["wo_id", "order_id", "planned_qty", "machine_id"]].sort_values("wo_id")
 
 
-def create_production_logs_frame(production_trend_frame: pd.DataFrame) -> pd.DataFrame:
-    production_logs_frame = production_trend_frame[
+def create_production_logs_frame(integrated_manufacture_frame: pd.DataFrame) -> pd.DataFrame:
+    production_logs_frame = integrated_manufacture_frame[
         ["wo_id", "timestamp", "temp_pv", "speed"]
     ].copy()
     production_logs_frame = production_logs_frame.sort_values(["timestamp", "wo_id"]).reset_index(
@@ -260,11 +247,10 @@ def create_production_logs_frame(production_trend_frame: pd.DataFrame) -> pd.Dat
     return production_logs_frame[["log_id", "wo_id", "timestamp", "temp_pv", "speed"]]
 
 
-def create_inspections_frame(input_frames: InputFrames) -> pd.DataFrame:
-    inspections_source = input_frames.ccm_measure.copy()
-    inspections_source["wo_id"] = inspections_source["LOT번호"].astype(str).str.strip()
-    inspections_source["inspection_step"] = to_float_series(inspections_source["검사차수"]).fillna(0)
-    inspections_source["color_de"] = to_float_series(inspections_source["염색색차 DE"])
+def create_inspections_frame(integrated_manufacture_frame: pd.DataFrame) -> pd.DataFrame:
+    inspections_source = integrated_manufacture_frame[
+        ["wo_id", "inspection_step", "color_de"]
+    ].copy()
     inspections_source = inspections_source.dropna(subset=["wo_id", "color_de"])
     inspections_source = inspections_source.sort_values(["wo_id", "inspection_step"])
     latest_inspection_by_lot = inspections_source.groupby("wo_id", as_index=False).tail(1).copy()
@@ -360,15 +346,15 @@ def write_output_frames(
 def main() -> None:
     arguments = parse_arguments()
     input_frames = load_input_frames(arguments.input_dir)
-    production_trend_frame, work_base_frame = build_reference_frames(input_frames)
+    integrated_manufacture_frame, work_base_frame = build_reference_frames(input_frames)
 
     products_frame = create_products_frame(input_frames, work_base_frame)
     sales_orders_frame = create_sales_orders_frame(work_base_frame)
     work_orders_frame = create_work_orders_frame(
-        work_base_frame, sales_orders_frame, production_trend_frame
+        work_base_frame, sales_orders_frame, integrated_manufacture_frame
     )
-    production_logs_frame = create_production_logs_frame(production_trend_frame)
-    inspections_frame = create_inspections_frame(input_frames)
+    production_logs_frame = create_production_logs_frame(integrated_manufacture_frame)
+    inspections_frame = create_inspections_frame(integrated_manufacture_frame)
 
     run_validation_checks(sales_orders_frame, work_orders_frame, production_logs_frame)
     write_output_frames(
