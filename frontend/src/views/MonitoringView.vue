@@ -1,6 +1,7 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useAsyncRequest } from '@/composables/useAsyncRequest'
+import { useProductionTrendSocket } from '@/composables/useProductionTrendSocket'
 import {
   getProductionLogsByWorkOrderId,
   getProductionProgress,
@@ -45,6 +46,22 @@ const workOrderList = computed(() =>
 const productionLogList = computed(() =>
   Array.isArray(productionLogsData.value) ? productionLogsData.value : [],
 )
+
+const {
+  connectionState: productionTrendConnectionState,
+  isConnected: isProductionTrendConnected,
+  lastErrorMessage: productionTrendErrorMessage,
+  connect: connectProductionTrendSocket,
+  disconnect: disconnectProductionTrendSocket,
+} = useProductionTrendSocket()
+
+onMounted(() => {
+  connectProductionTrendSocket()
+})
+
+onBeforeUnmount(() => {
+  disconnectProductionTrendSocket()
+})
 
 function getFirstDefinedValue(recordObject, candidateKeys) {
   for (const key of candidateKeys) {
@@ -97,6 +114,29 @@ function refreshMonitoringData() {
         다시 조회
       </button>
     </header>
+
+    <section class="feature-view__panel">
+      <h3>실시간 연결 상태</h3>
+      <p>
+        STOMP 연결 상태:
+        <strong
+          :class="isProductionTrendConnected ? 'feature-view__status--ok' : 'feature-view__status--warn'"
+        >
+          {{ productionTrendConnectionState }}
+        </strong>
+      </p>
+      <p v-if="productionTrendErrorMessage !== ''" class="feature-view__error">
+        {{ productionTrendErrorMessage }}
+      </p>
+      <div class="feature-view__actions">
+        <button type="button" :disabled="isProductionTrendConnected" @click="connectProductionTrendSocket">
+          연결
+        </button>
+        <button type="button" :disabled="!isProductionTrendConnected" @click="disconnectProductionTrendSocket">
+          해제
+        </button>
+      </div>
+    </section>
 
     <section class="feature-view__panel">
       <h3>진척률 요약</h3>
@@ -204,6 +244,19 @@ function refreshMonitoringData() {
 .feature-view__label {
   display: block;
   margin-bottom: var(--space-xs);
+}
+
+.feature-view__actions {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.feature-view__status--ok {
+  color: var(--color-status-normal);
+}
+
+.feature-view__status--warn {
+  color: var(--color-status-warning);
 }
 
 .feature-view__error {
