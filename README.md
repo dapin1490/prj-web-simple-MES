@@ -9,6 +9,7 @@
 
 | 문서 | 경로 |
 | --- | --- |
+| 신규 팀원 온보딩 | `docs/onboarding-guide.md` |
 | SRS | `docs/functional-requirement-statement.md` |
 | 아키텍처 | `docs/system-architecture-design.md` |
 | 데이터 생성 | `docs/data-generation-report.md` |
