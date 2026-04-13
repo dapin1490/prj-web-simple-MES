@@ -8,7 +8,7 @@
 - 기본 원칙:
     - 관심사 분리: 프론트엔드(UI), 백엔드(Business Logic), 데이터베이스(Storage)의 역할을 명확히 분리함.
     - 실시간성 확보: 스케줄러와 웹소켓을 활용하여 새로고침 없는 데이터 갱신을 구현함.
-    - 데이터 무결성: 정합성 지침에 따른 수치 동기화 로직을 백엔드에서 강제함.
+    - 데이터 무결성: 수치·참조 관계는 **사전 전처리된 데이터셋과 `docs/data-schema-definition.md`** 에 맞춘다. 런타임에 원천 CSV를 다시 집계·보정하지 않으며, 백엔드는 적재·조회 시 스키마와 정합성 지침을 **준수**한다(별도의 가공 파이프라인을 두지 않음).
 
 ### 2. 논리 아키텍처 (Layered Architecture)
 
@@ -49,7 +49,7 @@
 ### 4.2. 실시간 통신 (Messaging)
 
 - 프로토콜: WebSocket / STOMP.
-- Topic 구조: `/topic/production/{wo_id}` (특정 작업 지시의 실시간 로그 구독).
+- Topic 구조: `/topic/production-trend` (`docs/api-details.md`와 동일. 페이로드에 `wo_id` 등이 포함됨).
 
 ### 5. 인프라 아키텍처
 

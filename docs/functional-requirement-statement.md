@@ -80,6 +80,9 @@
 - 무결성 보장: 시뮬레이터가 읽는 모든 로그는 이미 `WorkOrders` 테이블의 고유 번호(`wo_id`)와 정합성이 확보된 상태이므로, 별도의 유효성 검사 로직을 간소화합니다.
 - 프론트엔드 연동: 데이터 적재와 동시에 WebSocket(STOMP)을 통해 Vue.js 클라이언트로 변경 사항을 Push하여 실시간 차트를 갱신합니다.
 
-### 3. 데이터 통합 및 정합성 전략 (Data Integration Strategy)
+### 8. 명세와 구현 시 참고 (스키마·API 우선)
 
-본 시스템은 런타임 시의 별도 데이터 가공 로직을 포함하지 않으며, 사전 전처리된 통합 데이터셋을 기반으로 동작합니다.
+- **물리 스키마의 정본**: 테이블·컬럼명·타입·관계는 `docs/data-schema-definition.md` **§2**를 따른다. 본 문서 §4의 표는 요약이며, 구현·마이그레이션·REST 필드는 §2와 일치시킨다.
+- **식별자 정합**: 전처리 데이터에서 `WorkOrders.wo_id`(의류 `PRODT_ORDER_NO`)와 `ProductionLogs.wo_id`(의류 `LOT_NO`)는 동일 로트를 가리키도록 이미 매핑되어 있다는 전제를 둔다. 상세는 `docs/data-generation-report.md` 및 정합성 지침을 참고한다.
+- **범위가 넓은 요구**: OEE, 로그인·권한, PDF/HTML 내보내기, 투입중량·염색길이 등은 목표 기능을 기술한 것이다. 현재 `docs/data-schema-definition.md`·`docs/api-details.md`에 없는 항목은 **추가 명세를 문서에 반영한 뒤** 구현한다.
+- **포속(속도) 필드**: §5.2의 '포속 1~4'는 현장 데이터 표현을 넓게 가리킨다. 스키마·API·WebSocket 샘플에 명시된 공정 속도는 `ProductionLogs.speed`(원천 `TRD_SPEED1`) **단일 필드**로 시작하고, 추가 축이 필요하면 스키마와 `api-details.md`를 함께 갱신한다.

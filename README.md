@@ -9,6 +9,7 @@
 
 | 문서 | 경로 |
 | --- | --- |
+| 신규 팀원 온보딩 | `docs/onboarding-guide.md` |
 | SRS | `docs/functional-requirement-statement.md` |
 | 아키텍처 | `docs/system-architecture-design.md` |
 | 데이터 생성 | `docs/data-generation-report.md` |
@@ -43,13 +44,13 @@
 
 ## 프로젝트 구조 (모노레포)
 
-단일 Git 저장소에서 백엔드와 프론트엔드를 분리해 관리합니다.
+단일 Git 저장소에서 백엔드와 프론트엔드를 분리해 관리하는 것을 목표로 합니다. 현재는 Spring Boot 백엔드가 `be-mes-project/`에 있으며, Vue 프론트엔드 루트 디렉터리는 도입 시 추가합니다.
 
 ```
 .
-├── backend/          # Spring Boot API, 스케줄러, STOMP, DB 연동
-├── frontend/         # Vue 3 SPA, Pinia, Axios, 실시간 차트·화면
+├── be-mes-project/   # Spring Boot API (Gradle), 스케줄러·STOMP·DB 연동 예정
 ├── docs/             # SRS, 스키마, API, 정합성 지침 등 설계 Single Source of Truth
+├── scripts/          # 데이터 탐색·전처리 스크립트
 ├── .github/          # Copilot 등 저장소 수준 지시문
 ├── .cursorrules      # Cursor AI 가이드
 ├── COLLABORATION.md  # 팀 협업 프로토콜
@@ -69,33 +70,25 @@
 | 단계 | 안내 |
 | --- | --- |
 | 산출물 확인 | 리포트에 명시된 통합 데이터셋(예: 생산 트렌드 `PRODUCTION_TREND_preprocessed.csv` 등) |
-| 배치 위치 예시 | `backend/src/main/resources/data/` (팀에서 정한 경로와 `application.yml`의 `spring` 리소스 설정과 일치시킴) |
+| 배치 위치 예시 | `be-mes-project/src/main/resources/data/` 등 (팀에서 정한 경로와 `application.properties` 또는 `application.yml`의 리소스 설정과 일치시킴) |
 | 주의 | 런타임에 원천 데이터를 다시 전처리하지 않고, **이미 정제된 파일을 순차 적재**하는 시뮬레이터에 맞춤 |
 
 파일명·필드 매핑은 `docs/data-schema-definition.md`와 데이터 생성 리포트를 함께 확인합니다.
 
 ### 2) 백엔드 실행 (Gradle)
 
-`backend` 디렉터리에서:
+`be-mes-project` 디렉터리에서:
 
 ```bash
-cd backend
+cd be-mes-project
 ./gradlew bootRun
 ```
 
-Windows에서는 `gradlew.bat`을 사용합니다. 빌드만 할 때는 `./gradlew build`입니다. JDK 17 이상이 필요합니다.
+Windows에서는 `gradlew.bat`을 사용합니다. 빌드만 할 때는 `./gradlew build`입니다. JDK 버전은 `be-mes-project/build.gradle`의 toolchain을 따릅니다.
 
 ### 3) 프론트엔드 실행 (npm)
 
-`frontend` 디렉터리에서:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-API Base URL과 WebSocket 엔드포인트는 `docs/api-details.md`의 로컬 기준값(`http://localhost:8080/api/v1`, `/ws-mes`)에 맞춰 환경 변수 또는 프록시를 설정합니다.
+프론트엔드 앱이 저장소에 추가되면 해당 디렉터리에서 `npm install` 및 `npm run dev`를 실행한다. API Base URL과 WebSocket 엔드포인트는 `docs/api-details.md`의 로컬 기준값(`http://localhost:8080/api/v1`, `/ws-mes`)에 맞춰 환경 변수 또는 프록시를 설정한다.
 
 ---
 
@@ -109,7 +102,7 @@ API Base URL과 WebSocket 엔드포인트는 `docs/api-details.md`의 로컬 기
 | **수량 동기화 (Overwrite)** | 의류 공정을 일자별로 묶어 `염색 가동 길이` 합계를 산출하고, 그 값을 에스윈텍 주문량(`day_order`)에 **덮어씀**으로써 주문·계획·실적 수치를 맞춤 |
 | **날짜 정렬** | 에스윈텍 주문일을 의류 실측일(`INSRT_DT` 등)에 맞게 치환하고, 실측이 없는 기간의 주문은 제거해 정합성 유지 |
 | **제품 정보** | 비공개 `code`를 의류 `JOB_CD` 등으로 치환하고, 제품명은 공정 특성에 맞는 가상 명칭으로 부여. 분류는 에스윈텍 `hierarchy` 유지 |
-| **품질 연계** | 전체 로트 중 측정값이 있는 로트(지침서 기준 434개 로트)에 `염색 색차 DE` 연결. **DE가 1.0 미만**이면 양호, **1.0 이상**이면 주의 또는 불량 |
+| **품질 연계** | 전체 로트 중 측정값이 있는 로트(지침서 기준 434개 로트)에 `염색 색차 DE` 연결. 스키마의 `pass_fail`은 **DE < 1.0**을 합격, **1.0 이상**을 불합격으로 정의함 (`docs/data-schema-definition.md`와 동일) |
 | **검증** | 수주 총량과 작업 지시 계획량 합의 일치, 주문 시각과 로그 시각의 선후 관계, `ProductionLogs`가 유효한 `wo_id`만 참조 |
 
 ---

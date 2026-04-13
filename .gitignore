@@ -1,5 +1,7 @@
 # custom
 data/
+.obsidian/
+be-mes-project/docs/
 
 # default
 __pycache__/

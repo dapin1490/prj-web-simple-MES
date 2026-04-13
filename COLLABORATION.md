@@ -1,6 +1,6 @@
 # 모노레포 협업 프로토콜 (심플 MES)
 
-팀이 동일한 규범으로 `backend`와 `frontend`를 나누어 개발할 때 따르는 협업 규칙이다.
+팀이 동일한 규범으로 백엔드와 프론트엔드를 나누어 개발할 때 따르는 협업 규칙이다. (현재 저장소에는 Spring Boot 프로젝트가 `be-mes-project/`에 있으며, 프론트엔드 루트 디렉터리는 도입 시 추가한다.)
 
 ## 1. Single Source of Truth
 
@@ -21,20 +21,20 @@
 
 ### 2.1 디렉터리
 
-- `backend/`: Java 17+, Spring Boot 3.x, MySQL 연동, 스케줄러, STOMP WebSocket 서버
-- `frontend/`: Vue 3, Composition API, `<script setup>`, 대시보드 및 관리 UI
+- `be-mes-project/`: Spring Boot(Gradle), DB 연동, 스케줄러, STOMP WebSocket 서버(구현 시). 기술 버전은 저장소의 `build.gradle`을 따른다.
+- `frontend/` (예정): Vue 3, Composition API, `<script setup>`, 대시보드 및 관리 UI. 저장소에 추가되면 본 절을 갱신한다.
 
 ### 2.2 권한과 소유 범위 (협업 기준)
 
-- **백엔드**: `backend/` 전역, 서버 설정, DB 마이그레이션·엔티티, REST 컨트롤러, 스케줄러, WebSocket 설정. 스키마 변경 시 `docs/data-schema-definition.md`와의 일치를 PR 설명에 명시한다.
-- **프론트엔드**: `frontend/` 전역, 라우팅, 컴포넌트, Axios 공통 계층, STOMP 클라이언트. API 계약은 `docs/api-details.md`를 따른다.
+- **백엔드**: `be-mes-project/` 전역, 서버 설정, DB 마이그레이션·엔티티, REST 컨트롤러, 스케줄러, WebSocket 설정. 스키마 변경 시 `docs/data-schema-definition.md`와의 일치를 PR 설명에 명시한다.
+- **프론트엔드**: `frontend/`가 생기면 해당 디렉터리 전역, 라우팅, 컴포넌트, Axios 공통 계층, STOMP 클라이언트. API 계약은 `docs/api-details.md`를 따른다.
 - **공통 문서**: `docs/` 변경은 해당 기능에 맞는 담당자가 제안하고, 스키마나 API가 바뀌면 백엔드와 프론트엔드 모두 리뷰어에 포함한다.
 
 필요 시 저장소에 `CODEOWNERS`를 두어 디렉터리별 승인 규칙을 자동화할 수 있다.
 
 ## 3. 데이터와 시뮬레이션 원칙
 
-- **스키마 준수**: 엔티티와 DTO 이름은 `docs/data-schema-definition.md`와 동일한 캐멀케이스·필드명을 유지한다.
+- **스키마 준수**: DB 컬럼과 REST JSON 키는 `docs/data-schema-definition.md` 및 `docs/api-details.md`의 스네이크 케이스 규칙을 따른다. Java 등 코드 내부의 camelCase는 프로젝트 관례에 맞춘다.
 - **전처리 재구현 금지**: 백엔드에서 CSV를 임의로 변환·보정하는 로직을 두지 않는다. `docs/data-generation-report.md`에 기술된 전처리된 산출물을 로드해 시뮬레이션한다.
 - **우선 과제**: `PRODUCTION_TREND_preprocessed.csv`를 읽어 1분 주기로 MySQL에 적재하는 스케줄러를 먼저 안정화하고, 시뮬레이션 시작·정지·초기화 API와 연동한다.
 

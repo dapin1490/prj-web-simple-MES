@@ -6,7 +6,7 @@
 
 - 목적: 수주(Planning)와 현장 실행(Execution) 데이터 간의 단절 없는 정보 흐름 구현.
 - 설계 원칙: 에스윈텍의 주문 체계를 상위 엔티티로, 의류 공정의 로트(LOT) 실적을 하위 엔티티로 구성하여 1:N 관계를 형성함.
-- 데이터 출처: 에스윈텍 고객사 주문량 데이터셋 , 의류 공정최적화 AI 데이터셋.
+- 데이터 출처: 에스윈텍 고객사 주문량 데이터셋, 의류 공정최적화 AI 데이터셋.
 
 ### 2. 상세 테이블 명세
 
@@ -16,8 +16,8 @@
 
 | 컬럼명 | 타입 | 설명 | 출처 데이터 항목 |
 | --- | --- | --- | --- |
-| product_id (PK) | VARCHAR | 제품 고유 코드 | 에스윈텍 `code`, 의류 `공정코드`(원본은 에스원텍의 데이터지만, 값이 없기 때문에 의류 데이터의 `공정코드`로 대치함) |
-| name | VARCHAR | 제품명 (예: 고신축 폴리 원단) | 에스윈텍 `name` , 의류 `작업명`(원본은 에스원텍의 데이터지만, 값이 없기 때문에 의류 데이터의 `작업명`으로 대치함) |
+| product_id (PK) | VARCHAR | 제품 고유 코드 | 에스윈텍 `code`, 의류 `공정코드`(에스윈텍 측 값이 없을 때 의류 데이터의 `공정코드`로 대치) |
+| name | VARCHAR | 제품명 (예: 고신축 폴리 원단) | 에스윈텍 `name`, 의류 `작업명`(에스윈텍 측 값이 없을 때 의류 데이터의 `작업명`으로 대치) |
 | category | VARCHAR | 제품 계층/분류 | 에스윈텍 `hierarchy` |
 | safety_stock | INT | 적정 안전 재고량 | 에스윈텍 `safety_stock` |
 
@@ -70,14 +70,14 @@
 
 ### 3. ER 다이어그램
 
+아래 다이어그램은 **§2 상세 테이블 명세에 나온 엔티티·컬럼만** 표현한다. (과거 초안에 있던 `Machines`, `ProcessStatus` 등 §2에 없는 개체는 제거하였다.)
+
 ```mermaid
 erDiagram
-    Products ||--o{ SalesOrders : "contains"
-    Products ||--o{ WorkOrders : "referenced_by"
-    SalesOrders ||--o{ WorkOrders : "split_into"
-    WorkOrders ||--o{ ProductionLogs : "generates"
-    WorkOrders ||--|| ProcessStatus : "tracks"
-    WorkOrders ||--o| Inspections : "results_in"
+    Products ||--o{ SalesOrders : "has"
+    SalesOrders ||--o{ WorkOrders : "splits_to"
+    WorkOrders ||--o{ ProductionLogs : "has"
+    WorkOrders ||--o| Inspections : "has"
 
     Products {
         string product_id PK
@@ -85,42 +85,29 @@ erDiagram
         string category
         int safety_stock
     }
-    Machines {
-        string machine_id PK
-        string name
-        string type
-        string location
-    }
     SalesOrders {
         string order_id PK
         string product_id FK
         date order_date
-        int qty
+        float order_qty
     }
     WorkOrders {
         string wo_id PK
         string order_id FK
-        string product_id FK
-        int planned_qty
-        string status
+        float planned_qty
+        string machine_id
     }
     ProductionLogs {
-        string log_id PK
+        bigint log_id PK
         string wo_id FK
         datetime timestamp
         float temp_pv
-        float speed
-    }
-    ProcessStatus {
-        string wo_id PK
-        int current_seq
-        int total_seq
-        float progress_rate
+        int speed
     }
     Inspections {
         string insp_id PK
         string wo_id FK
         float color_de
-        string pass_fail
+        boolean pass_fail
     }
 ```
