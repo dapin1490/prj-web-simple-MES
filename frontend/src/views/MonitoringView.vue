@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useAsyncRequest } from '@/composables/useAsyncRequest'
 import { useProductionTrendSocket } from '@/composables/useProductionTrendSocket'
 import {
@@ -51,9 +51,13 @@ const {
   connectionState: productionTrendConnectionState,
   isConnected: isProductionTrendConnected,
   lastErrorMessage: productionTrendErrorMessage,
+  lastReceivedMessage: latestProductionTrendMessage,
   connect: connectProductionTrendSocket,
   disconnect: disconnectProductionTrendSocket,
 } = useProductionTrendSocket()
+
+const realtimeTrendMessageList = ref([])
+const MAX_REALTIME_MESSAGE_COUNT = 50
 
 onMounted(() => {
   connectProductionTrendSocket()
@@ -61,6 +65,30 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   disconnectProductionTrendSocket()
+})
+
+watch(latestProductionTrendMessage, (messagePayload) => {
+  if (messagePayload === null) {
+    return
+  }
+
+  realtimeTrendMessageList.value = [
+    messagePayload,
+    ...realtimeTrendMessageList.value,
+  ].slice(0, MAX_REALTIME_MESSAGE_COUNT)
+})
+
+const filteredRealtimeTrendMessageList = computed(() => {
+  if (selectedWorkOrderId.value === '') {
+    return realtimeTrendMessageList.value
+  }
+
+  return realtimeTrendMessageList.value.filter((messageItem) => {
+    if (typeof messageItem !== 'object' || messageItem === null) {
+      return false
+    }
+    return String(messageItem.wo_id ?? '') === selectedWorkOrderId.value
+  })
 })
 
 function getFirstDefinedValue(recordObject, candidateKeys) {
@@ -135,6 +163,35 @@ function refreshMonitoringData() {
         <button type="button" :disabled="!isProductionTrendConnected" @click="disconnectProductionTrendSocket">
           해제
         </button>
+      </div>
+    </section>
+
+    <section class="feature-view__panel">
+      <h3>실시간 트렌드 스트림</h3>
+      <p v-if="filteredRealtimeTrendMessageList.length === 0">
+        수신된 실시간 메시지가 없습니다.
+      </p>
+      <div v-else class="feature-view__table-wrap">
+        <table class="feature-view__table">
+          <thead>
+            <tr>
+              <th>wo_id</th>
+              <th>timestamp</th>
+              <th>temp_pv</th>
+              <th>speed</th>
+              <th>progress</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(messageItem, messageIndex) in filteredRealtimeTrendMessageList" :key="messageIndex">
+              <td>{{ getFirstDefinedValue(messageItem, ['wo_id']) }}</td>
+              <td>{{ getFirstDefinedValue(messageItem, ['timestamp']) }}</td>
+              <td>{{ getFirstDefinedValue(messageItem, ['temp_pv']) }}</td>
+              <td>{{ getFirstDefinedValue(messageItem, ['speed']) }}</td>
+              <td>{{ getFirstDefinedValue(messageItem, ['progress']) }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
