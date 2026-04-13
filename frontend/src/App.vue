@@ -1,85 +1,66 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
+
+const menuItems = [
+  { to: '/dashboard', label: '대시보드' },
+  { to: '/orders', label: '수주 및 생산 계획' },
+  { to: '/monitoring', label: '실시간 공정 모니터링' },
+  { to: '/quality', label: '품질 검사 및 리포트' },
+]
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
+  <div class="app-shell">
+    <header class="app-header">
+      <h1 class="app-title">심플 MES 프론트엔드</h1>
+      <nav class="app-nav" aria-label="주요 메뉴">
+        <RouterLink
+          v-for="menuItem in menuItems"
+          :key="menuItem.to"
+          :to="menuItem.to"
+          class="app-nav__link"
+        >
+          {{ menuItem.label }}
+        </RouterLink>
       </nav>
-    </div>
-  </header>
+    </header>
 
-  <RouterView />
+    <RouterView />
+  </div>
 </template>
 
 <style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
+.app-shell {
+  min-height: 100vh;
 }
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
+.app-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-border, #e0e0e0);
 }
 
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
+.app-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.125rem;
 }
 
-nav a.router-link-exact-active {
-  color: var(--color-text);
+.app-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
+.app-nav__link {
   display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--color-border, #d0d0d0);
+  border-radius: 6px;
+  text-decoration: none;
+  color: inherit;
 }
 
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
+.app-nav__link.router-link-exact-active {
+  font-weight: 700;
+  border-color: #42b883;
 }
 </style>
