@@ -127,17 +127,13 @@ const logStreamLines = computed(() => {
   })
 })
 
-watch(
-  logStreamLines,
-  async () => {
-    await nextTick()
-    const panelElement = logPanelRef.value
-    if (panelElement) {
-      panelElement.scrollTop = panelElement.scrollHeight
-    }
-  },
-  { deep: true },
-)
+watch(logStreamLines, async () => {
+  await nextTick()
+  const panelElement = logPanelRef.value
+  if (panelElement) {
+    panelElement.scrollTop = panelElement.scrollHeight
+  }
+})
 
 function parseTimestampToSortKey(timestampValue) {
   if (timestampValue === null || timestampValue === undefined) {
