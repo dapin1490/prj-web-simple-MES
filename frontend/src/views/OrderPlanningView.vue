@@ -17,7 +17,7 @@ const modalContentRef = ref(null)
 function getFocusableElements(container) {
   return Array.from(
     container.querySelectorAll(
-      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]',
     ),
   )
 }
@@ -333,8 +333,8 @@ function isRowSelected(orderRecord) {
         aria-labelledby="issue-modal-title"
         @keydown="onModalKeydown"
       >
-        <div class="issue-modal__backdrop" @click="closeIssueModal" />
-        <div ref="modalContentRef" class="issue-modal__content">
+        <div class="issue-modal__backdrop" tabindex="-1" @click="closeIssueModal" />
+        <div ref="modalContentRef" class="issue-modal__content" tabindex="-1">
           <h3 id="issue-modal-title">작업 지시 발행</h3>
           <p class="feature-view__hint">
             백엔드에 WorkOrder 생성 API가 <code>docs/api-details.md</code>에 반영되면 이 화면에서 연동합니다.
