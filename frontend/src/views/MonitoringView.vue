@@ -1,12 +1,16 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useAsyncRequest } from '@/composables/useAsyncRequest'
 import { useProductionTrendSocket } from '@/composables/useProductionTrendSocket'
+import ProductionTrendChart from '@/components/ProductionTrendChart.vue'
 import {
   getProductionLogsByWorkOrderId,
   getProductionProgress,
   getWorkOrders,
 } from '@/api/executionApi'
+
+const CHART_MAX_POINTS = 80
+const LOG_MAX_LINES = 40
 
 const selectedWorkOrderId = ref('')
 
@@ -80,6 +84,74 @@ const filteredRealtimeTrendMessageList = computed(() => {
     return String(messageItem.wo_id ?? '') === selectedWorkOrderId.value
   })
 })
+
+const logPanelRef = ref(null)
+
+const chartSeriesPoints = computed(() => {
+  const parsedRows = []
+  for (const messageItem of filteredRealtimeTrendMessageList.value) {
+    if (typeof messageItem !== 'object' || messageItem === null) {
+      continue
+    }
+    const temperatureValue = Number(messageItem.temp_pv)
+    const speedValue = Number(messageItem.speed)
+    if (!Number.isFinite(temperatureValue) || !Number.isFinite(speedValue)) {
+      continue
+    }
+    const sortKey = parseTimestampToSortKey(messageItem.timestamp)
+    if (!Number.isFinite(sortKey)) {
+      continue
+    }
+    parsedRows.push({
+      sortKey,
+      label: formatChartAxisLabel(messageItem.timestamp),
+      temp_pv: temperatureValue,
+      speed: speedValue,
+    })
+  }
+  parsedRows.sort((firstRow, secondRow) => firstRow.sortKey - secondRow.sortKey)
+  const trimmedRows = parsedRows.slice(-CHART_MAX_POINTS)
+  return trimmedRows.map(({ label, temp_pv, speed }) => ({ label, temp_pv, speed }))
+})
+
+const logStreamLines = computed(() => {
+  const newestFirst = filteredRealtimeTrendMessageList.value
+  const windowItems = newestFirst.slice(0, LOG_MAX_LINES).reverse()
+  return windowItems.map((messageItem) => {
+    const workOrderLabel = getFirstDefinedValue(messageItem, ['wo_id'])
+    const timestampLabel = getFirstDefinedValue(messageItem, ['timestamp'])
+    const temperatureLabel = getFirstDefinedValue(messageItem, ['temp_pv'])
+    const speedLabel = getFirstDefinedValue(messageItem, ['speed'])
+    const progressLabel = getFirstDefinedValue(messageItem, ['progress'])
+    return `[${timestampLabel}] wo_id=${workOrderLabel} temp_pv=${temperatureLabel} speed=${speedLabel} progress=${progressLabel}`
+  })
+})
+
+watch(logStreamLines, async () => {
+  await nextTick()
+  const panelElement = logPanelRef.value
+  if (panelElement) {
+    panelElement.scrollTop = panelElement.scrollHeight
+  }
+})
+
+function parseTimestampToSortKey(timestampValue) {
+  if (timestampValue === null || timestampValue === undefined) {
+    return NaN
+  }
+  const text = typeof timestampValue === 'string' ? timestampValue : String(timestampValue)
+  const normalized = text.includes('T') ? text : text.replace(' ', 'T')
+  const parsedTime = Date.parse(normalized)
+  return Number.isFinite(parsedTime) ? parsedTime : NaN
+}
+
+function formatChartAxisLabel(timestampValue) {
+  const text = typeof timestampValue === 'string' ? timestampValue : String(timestampValue)
+  if (text.length >= 19) {
+    return text.slice(11, 19)
+  }
+  return text
+}
 
 function getFirstDefinedValue(recordObject, candidateKeys) {
   for (const key of candidateKeys) {
@@ -170,6 +242,20 @@ function refreshMonitoringData() {
           메시지 비우기
         </button>
       </div>
+    </section>
+
+    <section class="feature-view__panel">
+      <h3>실시간 트렌드 차트</h3>
+      <p v-if="chartSeriesPoints.length === 0">
+        차트에 표시할 수 있는 데이터가 없습니다. (temp_pv, speed, timestamp 필요)
+      </p>
+      <ProductionTrendChart v-else :points="chartSeriesPoints" />
+    </section>
+
+    <section class="feature-view__panel">
+      <h3>로그 스트리밍</h3>
+      <p v-if="logStreamLines.length === 0">수신 로그가 없습니다.</p>
+      <pre v-else ref="logPanelRef" class="feature-view__log">{{ logStreamLines.join('\n') }}</pre>
     </section>
 
     <section class="feature-view__panel">
@@ -356,5 +442,19 @@ function refreshMonitoringData() {
   padding: var(--space-xs);
   border-bottom: 1px solid var(--color-border);
   text-align: left;
+}
+
+.feature-view__log {
+  max-height: 12rem;
+  overflow: auto;
+  margin: 0;
+  padding: var(--space-sm);
+  font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: var(--radius-sm);
+  background: var(--color-background-soft);
 }
 </style>

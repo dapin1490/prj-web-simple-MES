@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useAsyncRequest } from '@/composables/useAsyncRequest'
+import ColorDeScatterChart from '@/components/ColorDeScatterChart.vue'
 import { getInspections, getReportByWorkOrderId } from '@/api/qualityApi'
 
 const selectedWorkOrderId = ref('')
@@ -40,6 +41,56 @@ const selectableWorkOrderList = computed(() => {
     }
   }
   return Array.from(workOrderIdSet)
+})
+
+const colorDeScatterPoints = computed(() => {
+  return inspectionList.value
+    .map((inspectionRecord, index) => {
+      const yValue = Number(inspectionRecord.color_de)
+      if (!Number.isFinite(yValue)) {
+        return null
+      }
+      let passValue = null
+      if (inspectionRecord.pass_fail === true) {
+        passValue = true
+      } else if (inspectionRecord.pass_fail === false) {
+        passValue = false
+      }
+      return {
+        x: index,
+        y: yValue,
+        pass: passValue,
+        label: String(inspectionRecord.wo_id ?? index),
+      }
+    })
+    .filter((point) => point !== null)
+})
+
+const normalizedReport = computed(() => {
+  const payload = reportData.value
+  if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
+    return null
+  }
+
+  const hasUnsupportedReportKeys =
+    'workOrder' in payload ||
+    'productionLogs' in payload ||
+    'woId' in payload ||
+    'work_order_summary' in payload ||
+    'logs' in payload ||
+    'quality' in payload ||
+    'inspection_result' in payload
+
+  if (hasUnsupportedReportKeys) {
+    return null
+  }
+
+  return {
+    workOrderBlock: payload.work_order ?? null,
+    productionLogsBlock: payload.production_logs ?? null,
+    inspectionBlock: payload.inspection ?? null,
+    topLevelWoId: payload.wo_id ?? null,
+  }
 })
 
 function getFirstDefinedValue(recordObject, candidateKeys) {
@@ -85,6 +136,14 @@ function refreshQualityData() {
     void loadReport()
   }
 }
+
+function formatJsonBlock(value) {
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return String(value)
+  }
+}
 </script>
 
 <template>
@@ -95,6 +154,18 @@ function refreshQualityData() {
         다시 조회
       </button>
     </header>
+
+    <section class="feature-view__panel">
+      <h3>품질 분포 (color_de 산점도)</h3>
+      <p class="feature-view__hint">
+        가로축은 검사 목록의 순번, 세로축은 <code>color_de</code>입니다. 주황 점선은 DE 1.0 기준선입니다.
+      </p>
+      <p v-if="inspectionsLoading">품질 데이터 불러오는 중...</p>
+      <p v-else-if="colorDeScatterPoints.length === 0" class="feature-view__muted">
+        산점도를 그릴 수 있는 <code>color_de</code> 값이 없습니다.
+      </p>
+      <ColorDeScatterChart v-else :points="colorDeScatterPoints" />
+    </section>
 
     <section class="feature-view__panel">
       <h3>품질 검사 결과 목록</h3>
@@ -129,7 +200,7 @@ function refreshQualityData() {
     </section>
 
     <section class="feature-view__panel">
-      <h3>공정 보고서 조회</h3>
+      <h3>공정 보고서 및 성적서 뷰어</h3>
       <label class="feature-view__label" for="report-work-order-filter">작업 지시(wo_id) 선택</label>
       <select
         id="report-work-order-filter"
@@ -146,7 +217,43 @@ function refreshQualityData() {
       <p v-if="reportLoading">공정 보고서 불러오는 중...</p>
       <p v-else-if="reportError" class="feature-view__error">{{ reportError.message }}</p>
       <p v-else-if="selectedWorkOrderId === ''">작업 지시를 선택하면 보고서를 조회합니다.</p>
-      <pre v-else-if="reportData !== null" class="feature-view__json">{{ JSON.stringify(reportData, null, 2) }}</pre>
+
+      <div v-else-if="reportData !== null && typeof reportData === 'object'" class="report-viewer">
+        <header class="report-viewer__header">
+          <p class="report-viewer__title">
+            생산 검사 성적서 (미리보기)
+            <span v-if="normalizedReport?.topLevelWoId" class="report-viewer__wo">
+              wo_id: {{ normalizedReport.topLevelWoId }}
+            </span>
+          </p>
+          <button type="button" class="report-viewer__pdf" disabled title="PDF/HTML 내보내기 방식 확정 후 연동">
+            PDF 내보내기
+          </button>
+        </header>
+
+        <div class="report-viewer__sections">
+          <section v-if="normalizedReport?.workOrderBlock !== null" class="report-viewer__section">
+            <h4>작업 지시</h4>
+            <pre class="report-viewer__pre">{{ formatJsonBlock(normalizedReport.workOrderBlock) }}</pre>
+          </section>
+
+          <section v-if="normalizedReport?.inspectionBlock !== null" class="report-viewer__section">
+            <h4>품질 결과</h4>
+            <pre class="report-viewer__pre">{{ formatJsonBlock(normalizedReport.inspectionBlock) }}</pre>
+          </section>
+
+          <section v-if="normalizedReport?.productionLogsBlock !== null" class="report-viewer__section">
+            <h4>생산 로그</h4>
+            <pre class="report-viewer__pre">{{ formatJsonBlock(normalizedReport.productionLogsBlock) }}</pre>
+          </section>
+        </div>
+
+        <details class="report-viewer__raw">
+          <summary>원본 JSON 전체</summary>
+          <pre class="feature-view__json">{{ JSON.stringify(reportData, null, 2) }}</pre>
+        </details>
+      </div>
+
       <p v-else>보고서 데이터가 없습니다.</p>
     </section>
   </main>
@@ -174,6 +281,16 @@ function refreshQualityData() {
 .feature-view__label {
   display: block;
   margin-bottom: var(--space-xs);
+}
+
+.feature-view__hint {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--font-size-sm);
+}
+
+.feature-view__muted {
+  margin: 0;
+  opacity: 0.85;
 }
 
 .feature-view__error {
@@ -211,5 +328,70 @@ function refreshQualityData() {
   padding: var(--space-sm);
   border-radius: var(--radius-sm);
   background: var(--color-background-soft);
+  overflow: auto;
+  max-height: 16rem;
+}
+
+.report-viewer {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background-soft);
+}
+
+.report-viewer__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.report-viewer__title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: 700;
+}
+
+.report-viewer__wo {
+  margin-left: var(--space-xs);
+  font-weight: 400;
+  font-size: var(--font-size-sm);
+}
+
+.report-viewer__pdf {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.report-viewer__sections {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.report-viewer__section h4 {
+  margin: 0 0 var(--space-xs);
+  font-size: var(--font-size-sm);
+}
+
+.report-viewer__pre {
+  margin: 0;
+  padding: var(--space-sm);
+  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+  overflow: auto;
+  max-height: 14rem;
+}
+
+.report-viewer__raw {
+  margin-top: var(--space-md);
+}
+
+.report-viewer__raw summary {
+  cursor: pointer;
+  font-size: var(--font-size-sm);
 }
 </style>
