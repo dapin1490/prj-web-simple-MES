@@ -79,7 +79,7 @@
   - 예:
     - 프론트엔드: `src/components/Button.vue`
     - 백엔드: `src/main/java/com/example/demo/controller/UserController.java`
-    - 데이터: `src/main/java/com/example/demo/entity/User.java`
+    - 데이터: `scripts/data_preprocess.py`
     - docs: `docs/data-schema-definition.md`
 
 ---
