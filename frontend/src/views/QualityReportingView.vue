@@ -68,16 +68,28 @@ const colorDeScatterPoints = computed(() => {
 
 const normalizedReport = computed(() => {
   const payload = reportData.value
-  if (payload === null || typeof payload !== 'object') {
+  if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
     return null
   }
+
+  const hasUnsupportedReportKeys =
+    'workOrder' in payload ||
+    'productionLogs' in payload ||
+    'woId' in payload ||
+    'work_order_summary' in payload ||
+    'logs' in payload ||
+    'quality' in payload ||
+    'inspection_result' in payload
+
+  if (hasUnsupportedReportKeys) {
+    return null
+  }
+
   return {
-    workOrderBlock:
-      payload.work_order ?? payload.workOrder ?? payload.work_order_summary ?? null,
-    productionLogsBlock:
-      payload.production_logs ?? payload.productionLogs ?? payload.logs ?? null,
-    inspectionBlock: payload.inspection ?? payload.quality ?? payload.inspection_result ?? null,
-    topLevelWoId: payload.wo_id ?? payload.woId ?? null,
+    workOrderBlock: payload.work_order ?? null,
+    productionLogsBlock: payload.production_logs ?? null,
+    inspectionBlock: payload.inspection ?? null,
+    topLevelWoId: payload.wo_id ?? null,
   }
 })
 
