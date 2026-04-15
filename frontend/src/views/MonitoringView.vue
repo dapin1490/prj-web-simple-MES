@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useAsyncRequest } from '@/composables/useAsyncRequest'
 import { useProductionTrendSocket } from '@/composables/useProductionTrendSocket'
 import ProductionTrendChart from '@/components/ProductionTrendChart.vue'
@@ -63,14 +63,6 @@ const {
   disconnect: disconnectProductionTrendSocket,
   clearReceivedMessages: clearProductionTrendMessages,
 } = useProductionTrendSocket()
-
-onMounted(() => {
-  connectProductionTrendSocket()
-})
-
-onBeforeUnmount(() => {
-  disconnectProductionTrendSocket()
-})
 
 const filteredRealtimeTrendMessageList = computed(() => {
   if (selectedWorkOrderId.value === '') {
