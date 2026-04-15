@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple MES SockJS/STOMP Test</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #0f172a;
+      --panel: #111827;
+      --card: #1f2937;
+      --muted: #94a3b8;
+      --text: #e5e7eb;
+      --accent: #38bdf8;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #0f172a, #111827 60%, #0f172a);
+      color: var(--text);
+    }
+
+    header {
+      padding: 20px 24px 10px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.85);
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    .subtitle { margin: 0; color: var(--muted); font-size: 13px; }
+
+    main {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 16px;
+      padding: 16px;
+    }
+
+    .panel, .card {
+      background: rgba(17, 24, 39, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+    }
+
+    .panel { padding: 16px; }
+    .panel h2, .card h3 { margin: 0 0 12px; font-size: 16px; }
+    .grid { display: grid; gap: 12px; }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: #cbd5e1;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    input, select, textarea, button {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0b1220;
+      color: var(--text);
+      padding: 10px 12px;
+      font: inherit;
+    }
+
+    textarea { min-height: 120px; resize: vertical; }
+    input::placeholder, textarea::placeholder { color: #64748b; }
+
+    button {
+      cursor: pointer;
+      transition: transform .08s ease, border-color .15s ease, background .15s ease;
+      font-weight: 700;
+    }
+
+    button:hover { transform: translateY(-1px); border-color: var(--accent); }
+    button.primary { background: linear-gradient(135deg, #0284c7, #0ea5e9); }
+    button.success { background: linear-gradient(135deg, #16a34a, #22c55e); }
+    button.warning { background: linear-gradient(135deg, #d97706, #f59e0b); }
+    button.danger { background: linear-gradient(135deg, #dc2626, #ef4444); }
+    button.ghost { background: #0b1220; }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar button { width: auto; }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #0b1220;
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
+    }
+
+    .dot.connected {
+      background: var(--success);
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+    }
+
+    .dot.subscribed {
+      background: var(--warning);
+      box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.15);
+    }
+
+    .examples {
+      display: grid;
+      gap: 10px;
+    }
+
+    .example-group {
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.55);
+    }
+
+    .example-group h4 {
+      margin: 0 0 10px;
+      font-size: 13px;
+    }
+
+    .example-actions {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .log {
+      margin: 0;
+      min-height: 260px;
+      max-height: 420px;
+      overflow: auto;
+      padding: 12px;
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: Consolas, 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .small { font-size: 12px; color: var(--muted); }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.15);
+      color: #7dd3fc;
+      font-size: 11px;
+      margin-left: 8px;
+    }
+
+    @media (max-width: 1100px) {
+      main { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Simple MES SockJS/STOMP Test Page <span class="badge">Planning / Execution</span></h1>
+    <p class="subtitle">WebSocket endpoint: <code>/ws-mes</code> · 요청은 <code>/app</code> · 구독은 <code>/user/queue</code></p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Connection & Message</h2>
+      <div class="grid two">
+        <div>
+          <label for="url">URL</label>
+          <input id="url" value="/ws-mes" />
+        </div>
+        <div>
+          <label for="connectType">Connect Type</label>
+          <select id="connectType">
+            <option selected>STOMP</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid two" style="margin-top: 12px;">
+        <div>
+          <label for="connectHeader">STOMP connect header</label>
+          <textarea id="connectHeader" spellcheck="false">{"accept-version":"1.2","host":"localhost"}</textarea>
+        </div>
+        <div>
+          <label for="subscribeDestination">STOMP subscribe destination</label>
+          <input id="subscribeDestination" value="/user/queue/planning/products" />
+          <div style="height: 10px"></div>
+          <label for="sendHeader">STOMP send header</label>
+          <textarea id="sendHeader" spellcheck="false">{}</textarea>
+        </div>
+      </div>
+
+      <div class="grid two" style="margin-top: 12px;">
+        <div>
+          <label for="sendDestination">STOMP send destination</label>
+          <input id="sendDestination" value="/app/planning/products" />
+        </div>
+        <div>
+          <label for="messageContent">Message Content</label>
+          <textarea id="messageContent" spellcheck="false">{}</textarea>
+        </div>
+      </div>
+
+      <div class="toolbar" style="margin-top: 14px;">
+        <button class="primary" id="connectBtn">Connect</button>
+        <button class="success" id="subscribeBtn">Subscribe</button>
+        <button class="warning" id="sendBtn">Send</button>
+        <button class="danger" id="disconnectBtn">Disconnect</button>
+        <button class="ghost" id="clearLogBtn">Clear Log</button>
+      </div>
+
+      <p class="hint" style="margin-top: 12px;">
+        1) Connect → 2) Subscribe → 3) Send 순서로 사용하세요. <br />
+        SockJS 지원 서버에서는 이 페이지를 <code>http://localhost:8080/ws-mes-test.html</code> 로 열어 테스트할 수 있습니다.
+      </p>
+    </section>
+
+    <aside class="panel">
+      <h2>Quick Examples</h2>
+      <div class="examples">
+        <div class="example-group">
+          <h4>Planning</h4>
+          <div class="example-actions">
+            <button data-example="planning-products">Products</button>
+            <button data-example="planning-orders">Orders</button>
+            <button data-example="planning-orders-by-product">Orders by Product</button>
+          </div>
+        </div>
+
+        <div class="example-group">
+          <h4>Execution</h4>
+          <div class="example-actions">
+            <button data-example="execution-work-orders">Work Orders</button>
+            <button data-example="execution-logs">Logs by wo_id</button>
+            <button data-example="execution-progress">Progress</button>
+          </div>
+        </div>
+
+        <div class="example-group">
+          <h4>Status</h4>
+          <div class="grid" style="gap: 8px;">
+            <div class="status"><span id="connDot" class="dot"></span><span id="connStatus">Disconnected</span></div>
+            <div class="status"><span id="subDot" class="dot"></span><span id="subStatus">Not subscribed</span></div>
+            <div class="small" id="lastMessage">No message yet.</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="panel" style="grid-column: 1 / -1;">
+      <h2>Logs</h2>
+      <pre id="log" class="log"></pre>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
+  <script>
+    const elements = {
+      url: document.getElementById('url'),
+      connectType: document.getElementById('connectType'),
+      connectHeader: document.getElementById('connectHeader'),
+      subscribeDestination: document.getElementById('subscribeDestination'),
+      sendHeader: document.getElementById('sendHeader'),
+      sendDestination: document.getElementById('sendDestination'),
+      messageContent: document.getElementById('messageContent'),
+      connectBtn: document.getElementById('connectBtn'),
+      subscribeBtn: document.getElementById('subscribeBtn'),
+      sendBtn: document.getElementById('sendBtn'),
+      disconnectBtn: document.getElementById('disconnectBtn'),
+      clearLogBtn: document.getElementById('clearLogBtn'),
+      log: document.getElementById('log'),
+      connDot: document.getElementById('connDot'),
+      connStatus: document.getElementById('connStatus'),
+      subDot: document.getElementById('subDot'),
+      subStatus: document.getElementById('subStatus'),
+      lastMessage: document.getElementById('lastMessage'),
+    };
+
+    let stompClient = null;
+    let activeSubscription = null;
+    let connected = false;
+
+    function appendLog(message) {
+      const line = `[${new Date().toLocaleTimeString()}] ${message}`;
+      elements.log.textContent += `${line}\n`;
+      elements.log.scrollTop = elements.log.scrollHeight;
+    }
+
+    function setConnectionStatus(isConnected) {
+      connected = isConnected;
+      elements.connDot.className = isConnected ? 'dot connected' : 'dot';
+      elements.connStatus.textContent = isConnected ? 'Connected' : 'Disconnected';
+    }
+
+    function setSubscriptionStatus(isSubscribed, destination = '') {
+      elements.subDot.className = isSubscribed ? 'dot subscribed' : 'dot';
+      elements.subStatus.textContent = isSubscribed ? `Subscribed: ${destination}` : 'Not subscribed';
+    }
+
+    function tryParseJson(value, fallback = null) {
+      if (!value || !value.trim()) return fallback;
+      try {
+        return JSON.parse(value);
+      } catch (error) {
+        throw new Error(`JSON parse failed: ${error.message}`);
+      }
+    }
+
+    function createClient() {
+      const connectHeader = tryParseJson(elements.connectHeader.value, {});
+      const url = elements.url.value.trim();
+      const socketUrl = url.startsWith('http') || url.startsWith('ws') ? url : `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`;
+      const socket = new SockJS(socketUrl);
+      const client = new StompJs.Client({
+        webSocketFactory: () => socket,
+        connectHeaders: connectHeader,
+        reconnectDelay: 0,
+        debug: (str) => appendLog(`DEBUG: ${str}`),
+        onConnect: () => {
+          setConnectionStatus(true);
+          appendLog('STOMP connected.');
+          subscribeCurrent();
+        },
+        onStompError: (frame) => {
+          appendLog(`STOMP error: ${frame.headers['message'] || 'unknown'}`);
+          appendLog(frame.body || '(empty body)');
+        },
+        onWebSocketClose: () => {
+          setConnectionStatus(false);
+          setSubscriptionStatus(false);
+          appendLog('WebSocket closed.');
+        },
+        onWebSocketError: (event) => {
+          appendLog(`WebSocket error: ${event?.message || 'unknown'}`);
+        },
+      });
+      return client;
+    }
+
+    function connect() {
+      if (stompClient && connected) {
+        appendLog('Already connected.');
+        return;
+      }
+      try {
+        stompClient = createClient();
+        appendLog(`Connecting to ${elements.url.value.trim()} ...`);
+        stompClient.activate();
+      } catch (error) {
+        appendLog(`Connect failed: ${error.message}`);
+      }
+    }
+
+    function unsubscribeCurrent() {
+      if (activeSubscription) {
+        activeSubscription.unsubscribe();
+        activeSubscription = null;
+      }
+      setSubscriptionStatus(false);
+    }
+
+    function subscribeCurrent() {
+      if (!stompClient || !connected) {
+        appendLog('Connect first.');
+        return;
+      }
+
+      const destination = elements.subscribeDestination.value.trim();
+      if (!destination) {
+        appendLog('Subscribe destination is empty.');
+        return;
+      }
+
+      unsubscribeCurrent();
+      activeSubscription = stompClient.subscribe(destination, (message) => {
+        let body = message.body;
+        try {
+          body = JSON.stringify(JSON.parse(message.body), null, 2);
+        } catch (error) {
+          // keep raw body
+        }
+        elements.lastMessage.textContent = `Received from ${destination}`;
+        appendLog(`RECEIVED ${destination}:\n${body}`);
+      });
+      setSubscriptionStatus(true, destination);
+      appendLog(`Subscribed to ${destination}`);
+    }
+
+    function sendMessage() {
+      if (!stompClient || !connected) {
+        appendLog('Connect first.');
+        return;
+      }
+
+      const sendHeader = tryParseJson(elements.sendHeader.value, {});
+      const destination = elements.sendDestination.value.trim();
+      const content = elements.messageContent.value ?? '';
+
+      if (!destination) {
+        appendLog('Send destination is empty.');
+        return;
+      }
+
+      try {
+        stompClient.publish({
+          destination,
+          headers: sendHeader,
+          body: content,
+        });
+        appendLog(`SENT ${destination}: ${content}`);
+      } catch (error) {
+        appendLog(`Send failed: ${error.message}`);
+      }
+    }
+
+    function disconnect() {
+      unsubscribeCurrent();
+      if (stompClient) {
+        stompClient.deactivate();
+        stompClient = null;
+      }
+      setConnectionStatus(false);
+      appendLog('Disconnected.');
+    }
+
+    function setExample(example) {
+      const examples = {
+        'planning-products': {
+          subscribeDestination: '/user/queue/planning/products',
+          sendDestination: '/app/planning/products',
+          messageContent: '{}',
+        },
+        'planning-orders': {
+          subscribeDestination: '/user/queue/planning/orders',
+          sendDestination: '/app/planning/orders',
+          messageContent: '{}',
+        },
+        'planning-orders-by-product': {
+          subscribeDestination: '/user/queue/planning/orders/by-product',
+          sendDestination: '/app/planning/orders/by-product',
+          messageContent: '{\n  "product_id": "P-1001"\n}',
+        },
+        'execution-work-orders': {
+          subscribeDestination: '/user/queue/execution/work-orders',
+          sendDestination: '/app/execution/work-orders',
+          messageContent: '{}',
+        },
+        'execution-logs': {
+          subscribeDestination: '/user/queue/execution/production/logs/by-wo',
+          sendDestination: '/app/execution/production/logs/by-wo',
+          messageContent: '{\n  "wo_id": "WO-220101-001"\n}',
+        },
+        'execution-progress': {
+          subscribeDestination: '/user/queue/execution/production/progress',
+          sendDestination: '/app/execution/production/progress',
+          messageContent: '{}',
+        },
+      };
+
+      const selected = examples[example];
+      if (!selected) return;
+
+      elements.subscribeDestination.value = selected.subscribeDestination;
+      elements.sendDestination.value = selected.sendDestination;
+      elements.messageContent.value = selected.messageContent;
+      appendLog(`Loaded example: ${example}`);
+    }
+
+    elements.connectBtn.addEventListener('click', connect);
+    elements.subscribeBtn.addEventListener('click', subscribeCurrent);
+    elements.sendBtn.addEventListener('click', sendMessage);
+    elements.disconnectBtn.addEventListener('click', disconnect);
+    elements.clearLogBtn.addEventListener('click', () => (elements.log.textContent = ''));
+
+    document.querySelectorAll('[data-example]').forEach((button) => {
+      button.addEventListener('click', () => setExample(button.dataset.example));
+    });
+
+    window.addEventListener('beforeunload', disconnect);
+
+    appendLog('Ready. Choose an example or fill destinations manually.');
+  </script>
+</body>
+</html>
+
