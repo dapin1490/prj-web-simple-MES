@@ -20,7 +20,6 @@ public class MesWebSocketConfig implements WebSocketMessageBrokerConfigurer {
   @Override
   public void registerStompEndpoints(StompEndpointRegistry registry) {
     registry.setPreserveReceiveOrder(true);
-    registry.addEndpoint("/ws-mes").setAllowedOriginPatterns("*");
+    registry.addEndpoint("/ws-mes").setAllowedOriginPatterns("*").withSockJS();
   }
 }
-
