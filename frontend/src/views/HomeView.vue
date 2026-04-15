@@ -1,89 +1,196 @@
 <script setup>
-import TheWelcome from '../components/TheWelcome.vue'
+import { computed } from 'vue'
 import { useAsyncRequest } from '@/composables/useAsyncRequest'
-import { apiGet } from '@/api/httpClient'
+import { getProductionProgress, getWorkOrders } from '@/api/executionApi'
+import { getInspections } from '@/api/qualityApi'
 
 const {
-  data: productsData,
-  loading: productsLoading,
-  error: productsError,
-  run: loadProducts,
-} = useAsyncRequest(() => apiGet('/products'), {
-  immediate: true,
+  data: productionProgressData,
+  loading: productionProgressLoading,
+  error: productionProgressError,
+  run: loadProductionProgress,
+} = useAsyncRequest(() => getProductionProgress(), { immediate: true })
+
+const {
+  data: inspectionsData,
+  loading: inspectionsLoading,
+  error: inspectionsError,
+  run: loadInspections,
+} = useAsyncRequest(() => getInspections(), { immediate: true })
+
+const {
+  data: workOrdersData,
+  loading: workOrdersLoading,
+  error: workOrdersError,
+  run: loadWorkOrders,
+} = useAsyncRequest(() => getWorkOrders(), { immediate: true })
+
+const workOrderList = computed(() => (Array.isArray(workOrdersData.value) ? workOrdersData.value : []))
+const inspectionList = computed(() => (Array.isArray(inspectionsData.value) ? inspectionsData.value : []))
+
+const progressPercent = computed(() => {
+  const progressPayload = productionProgressData.value
+  if (typeof progressPayload === 'number') {
+    return progressPayload.toFixed(1)
+  }
+
+  if (progressPayload && typeof progressPayload === 'object') {
+    const candidateProgressValue = progressPayload.progress ?? progressPayload.progress_rate
+    if (typeof candidateProgressValue === 'number') {
+      return candidateProgressValue.toFixed(1)
+    }
+  }
+
+  return '-'
 })
+
+const passRatePercent = computed(() => {
+  if (inspectionList.value.length === 0) {
+    return '-'
+  }
+  const passCount = inspectionList.value.filter((inspectionRecord) => inspectionRecord.pass_fail === true).length
+  return ((passCount / inspectionList.value.length) * 100).toFixed(1)
+})
+
+function getDisplayValue(recordObject, candidateKeys) {
+  for (const key of candidateKeys) {
+    if (key in recordObject && recordObject[key] !== null && recordObject[key] !== undefined) {
+      return String(recordObject[key])
+    }
+  }
+  return '-'
+}
+
+function refreshDashboardData() {
+  void loadProductionProgress()
+  void loadInspections()
+  void loadWorkOrders()
+}
 </script>
 
 <template>
-  <main>
-    <section class="api-status" aria-live="polite">
-      <h2 class="api-status__title">API 연동 확인 (개발용)</h2>
-      <p v-if="productsLoading" class="api-status__loading">불러오는 중...</p>
-      <p v-else-if="productsError" class="api-status__error" role="alert">
-        {{ productsError.message }}
-      </p>
-      <pre
-        v-else-if="productsData !== null"
-        class="api-status__data"
-      ><code>{{ JSON.stringify(productsData, null, 2) }}</code></pre>
-      <p v-else class="api-status__empty">표시할 데이터가 없습니다.</p>
+  <main class="dashboard-view">
+    <header class="dashboard-view__header">
+      <h2>메인 대시보드</h2>
       <button
         type="button"
-        class="api-status__retry"
-        :disabled="productsLoading"
-        @click="loadProducts()"
+        :disabled="productionProgressLoading || inspectionsLoading || workOrdersLoading"
+        @click="refreshDashboardData"
       >
-        다시 불러오기
+        다시 조회
       </button>
+    </header>
+
+    <section class="dashboard-view__kpi-grid">
+      <article class="dashboard-view__kpi-card">
+        <p class="dashboard-view__kpi-label">목표 대비 실적 (Progress)</p>
+        <p class="dashboard-view__kpi-value">{{ progressPercent }}%</p>
+        <p v-if="productionProgressError" class="dashboard-view__error">{{ productionProgressError.message }}</p>
+      </article>
+
+      <article class="dashboard-view__kpi-card">
+        <p class="dashboard-view__kpi-label">품질 합격률 (Pass Rate)</p>
+        <p class="dashboard-view__kpi-value">{{ passRatePercent }}%</p>
+        <p v-if="inspectionsError" class="dashboard-view__error">{{ inspectionsError.message }}</p>
+      </article>
+
+      <article class="dashboard-view__kpi-card">
+        <p class="dashboard-view__kpi-label">작업 지시 수</p>
+        <p class="dashboard-view__kpi-value">{{ workOrderList.length }}</p>
+        <p v-if="workOrdersError" class="dashboard-view__error">{{ workOrdersError.message }}</p>
+      </article>
     </section>
-    <TheWelcome />
+
+    <section class="dashboard-view__panel">
+      <h3>현장 현황판 (설비/LOT)</h3>
+      <p v-if="workOrdersLoading">작업 지시 목록 불러오는 중...</p>
+      <p v-else-if="workOrdersError" class="dashboard-view__error">{{ workOrdersError.message }}</p>
+      <p v-else-if="workOrderList.length === 0">표시할 작업 지시 데이터가 없습니다.</p>
+      <div v-else class="dashboard-view__table-wrap">
+        <table class="dashboard-view__table">
+          <thead>
+            <tr>
+              <th>machine_id</th>
+              <th>wo_id</th>
+              <th>planned_qty</th>
+              <th>order_id</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="workOrder in workOrderList" :key="String(workOrder.wo_id ?? workOrder.id)">
+              <td>{{ getDisplayValue(workOrder, ['machine_id', 'equipment_id']) }}</td>
+              <td>{{ getDisplayValue(workOrder, ['wo_id', 'id']) }}</td>
+              <td>{{ getDisplayValue(workOrder, ['planned_qty', 'qty']) }}</td>
+              <td>{{ getDisplayValue(workOrder, ['order_id']) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </main>
 </template>
 
 <style scoped>
-.api-status {
-  margin-bottom: 1.5rem;
-  padding: 1rem;
-  border: 1px solid var(--color-border, #e0e0e0);
-  border-radius: 8px;
+.dashboard-view {
+  display: grid;
+  gap: var(--space-md);
 }
 
-.api-status__title {
-  margin: 0 0 0.75rem;
-  font-size: 1rem;
+.dashboard-view__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.api-status__loading {
+.dashboard-view__kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-md);
+}
+
+.dashboard-view__kpi-card {
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+}
+
+.dashboard-view__kpi-label {
+  margin: 0 0 var(--space-xs);
+  font-size: var(--font-size-sm);
+}
+
+.dashboard-view__kpi-value {
   margin: 0;
-  color: var(--color-text-muted, #666);
+  font-size: 1.6rem;
+  font-weight: 700;
 }
 
-.api-status__error {
-  margin: 0;
-  color: #b00020;
+.dashboard-view__panel {
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
 }
 
-.api-status__data {
-  margin: 0 0 0.75rem;
-  max-height: 12rem;
-  overflow: auto;
-  padding: 0.75rem;
-  font-size: 0.85rem;
-  background: var(--color-background-soft, #f5f5f5);
-  border-radius: 4px;
+.dashboard-view__error {
+  margin-top: var(--space-xs);
+  color: var(--color-status-danger);
 }
 
-.api-status__empty {
-  margin: 0 0 0.75rem;
-  color: var(--color-text-muted, #666);
+.dashboard-view__table-wrap {
+  overflow-x: auto;
 }
 
-.api-status__retry {
-  padding: 0.35rem 0.75rem;
-  cursor: pointer;
+.dashboard-view__table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.api-status__retry:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
+.dashboard-view__table th,
+.dashboard-view__table td {
+  padding: var(--space-xs);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
 }
 </style>
