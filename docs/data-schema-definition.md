@@ -52,7 +52,9 @@
 | log_id (PK) | BIGINT | 로그 고유 ID | (자동 생성) |
 | wo_id (FK) | VARCHAR | 작업 지시 외래키 | 의류 `LOT_NO` |
 | timestamp | DATETIME | 수집 일시 (1분 단위) | 의류 `INSRT_DT` |
-| temp_pv | FLOAT | 설비 현재 온도 | 의류 `TRD_TEMP_PV` |
+| cr_temp | INT | 설비 가동 목표온도(℃) | 의류 `CR_TEMP` |
+| temp_sp | FLOAT | 설비 가동 지시온도(℃) | 의류 `TRD_TEMP_SP` |
+| temp_pv | FLOAT | 설비 현재 온도(실측, ℃) | 의류 `TRD_TEMP_PV` |
 | speed | INT | 설비 가동 속도 | 의류 `TRD_SPEED1` |
 
 ### 2.5 품질 검사 결과 (Inspections)
@@ -101,6 +103,8 @@ erDiagram
         bigint log_id PK
         string wo_id FK
         datetime timestamp
+        int cr_temp
+        float temp_sp
         float temp_pv
         int speed
     }

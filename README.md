@@ -26,7 +26,7 @@
 | --- | --- |
 | **Backend** | Java 17, Spring Boot 3.x, MySQL 8.x |
 | **Frontend** | Vue.js 3.x, Pinia, Axios |
-| **통신** | REST API (조회·제어), **STOMP WebSocket** (`/ws-mes`, 토픽 `/topic/production-trend`) |
+| **통신** | REST API (조회·제어), **STOMP WebSocket** (`/ws-mes`, 토픽 `/topic/production-trend`, 선택 `/topic/equipment-alert`는 `docs/api-details.md` §6.1) |
 
 실시간 공정 트렌드는 REST 폴링이 아니라 **STOMP 기반 WebSocket**으로 전달하는 것을 전제로 합니다. 상세는 `docs/api-details.md`를 따릅니다.
 
@@ -69,11 +69,11 @@
 
 | 단계 | 안내 |
 | --- | --- |
-| 산출물 확인 | 리포트에 명시된 통합 데이터셋(예: 생산 트렌드 `PRODUCTION_TREND_preprocessed.csv` 등) |
+| 산출물 확인 | `scripts/data_preprocess.py` 기준 출력 디렉터리 `data/backend_ready/`의 CSV(예: `ProductionLogs.csv`, `WorkOrders.csv` 등). 통합 입력은 `data/`의 `integrated_manufacture_data.csv`·`MES_customer_order.csv`를 전제로 한다. |
 | 배치 위치 예시 | `be-mes-project/src/main/resources/data/` 등 (팀에서 정한 경로와 `application.properties` 또는 `application.yml`의 리소스 설정과 일치시킴) |
 | 주의 | 런타임에 원천 데이터를 다시 전처리하지 않고, **이미 정제된 파일을 순차 적재**하는 시뮬레이터에 맞춤 |
 
-파일명·필드 매핑은 `docs/data-schema-definition.md`와 데이터 생성 리포트를 함께 확인합니다.
+파일명·필드 매핑은 `docs/data-schema-definition.md`, `docs/data-generation-report.md` §2.3을 함께 확인합니다.
 
 ### 2) 백엔드 실행 (Gradle)
 
@@ -103,7 +103,7 @@ Windows에서는 `gradlew.bat`을 사용합니다. 빌드만 할 때는 `./gradl
 | **날짜 정렬** | 에스윈텍 주문일을 의류 실측일(`INSRT_DT` 등)에 맞게 치환하고, 실측이 없는 기간의 주문은 제거해 정합성 유지 |
 | **제품 정보** | 비공개 `code`를 의류 `JOB_CD` 등으로 치환하고, 제품명은 공정 특성에 맞는 가상 명칭으로 부여. 분류는 에스윈텍 `hierarchy` 유지 |
 | **품질 연계** | 전체 로트 중 측정값이 있는 로트(지침서 기준 434개 로트)에 `염색 색차 DE` 연결. 스키마의 `pass_fail`은 **DE < 1.0**을 합격, **1.0 이상**을 불합격으로 정의함 (`docs/data-schema-definition.md`와 동일) |
-| **검증** | 수주 총량과 작업 지시 계획량 합의 일치, 주문 시각과 로그 시각의 선후 관계, `ProductionLogs`가 유효한 `wo_id`만 참조 |
+| **검증** | 수주 총량과 작업 지시 계획량 합의 일치, 주문 시각과 로그 시각의 선후 관계, `ProductionLogs`가 유효한 `wo_id`만 참조. 로그 행은 스키마에 정의된 `cr_temp`, `temp_sp`, `temp_pv`, `speed` 등을 포함한다. |
 
 ---
 

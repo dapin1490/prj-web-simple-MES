@@ -82,6 +82,7 @@
 - [ ] `Products`, `SalesOrders`, `WorkOrders`, `ProductionLogs`, `Inspections`의 역할과 대략적인 관계를 말할 수 있다.
 - [ ] REST Base URL과 WebSocket 엔드포인트, 구독 토픽을 `api-details.md`에서 찾을 수 있다.
 - [ ] 스키마나 API를 바꿀 때 어떤 문서를 함께 수정해야 하는지 안다 (`COLLABORATION.md`).
+- [ ] `ProductionLogs`의 온도·속도 필드(`cr_temp`, `temp_sp`, `temp_pv`, `speed`)가 스키마 §2.4와 전처리 매핑(`data-generation-report.md` §2.3)에서 어떻게 정의되는지 안다.
 
 ---
 

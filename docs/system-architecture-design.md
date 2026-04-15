@@ -32,9 +32,10 @@
 
 1. 초기 적재 (Initial Loading): 에스윈텍(수주) 및 의류 공정(마스터) 데이터를 정합성 지침에 따라 전처리하여 MySQL 마스터 테이블에 저장함.
 2. 생산 시뮬레이션 (Simulation Flow):
-    - Spring Boot 스케줄러가 1분(가상 시간)마다 의류 공정 트렌드 파일의 레코드를 읽음.
-    - 해당 데이터를 `ProductionLogs` 테이블에 Insert함.
-    - 동시에 WebSocket을 통해 현재 생성된 로그를 프론트엔드로 전송함.
+    - Spring Boot 스케줄러가 1분(가상 시간)마다 전처리된 공정 트렌드 CSV의 레코드를 읽음 (`docs/data-generation-report.md` §2.3, `data/backend_ready` 산출물).
+    - 해당 데이터를 `ProductionLogs` 테이블에 Insert함. 스키마 컬럼은 `cr_temp`, `temp_sp`, `temp_pv`, `speed` 등 `docs/data-schema-definition.md` §2.4를 따름.
+    - 동시에 WebSocket을 통해 현재 생성된 로그를 프론트엔드로 전송함 (`/topic/production-trend`).
+    - (선택) 적재 시 설비 이상을 판정하면 `docs/api-details.md` §6.1의 별도 토픽으로 알림을 푸시함.
 3. UI 갱신 (Real-time Update): Vue.js 대시보드가 수신된 데이터를 바탕으로 실시간 차트와 진척률($P$)을 즉각 업데이트함.
 
 ### 4. 핵심 컴포넌트 상세 설계
@@ -49,7 +50,7 @@
 ### 4.2. 실시간 통신 (Messaging)
 
 - 프로토콜: WebSocket / STOMP.
-- Topic 구조: `/topic/production-trend` (`docs/api-details.md`와 동일. 페이로드에 `wo_id` 등이 포함됨).
+- Topic 구조: `/topic/production-trend` (`docs/api-details.md` §6와 동일). 설비 이상 알림은 §6.1의 별도 토픽을 사용할 수 있다.
 
 ### 5. 인프라 아키텍처
 

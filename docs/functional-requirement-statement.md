@@ -36,7 +36,7 @@
 | Products | `product_id`(PK), `name`, `safety_stock` | 제품 마스터 정보. |
 | SalesOrders | `order_id`(PK), `product_id`(FK), `order_qty` | 동기화된 일일 주문 정보. |
 | WorkOrders | `wo_id`(PK), `order_id`(FK), `planned_qty` | 생산 로트(LOT) 단위 작업 지시. |
-| ProductionLogs | `log_id`(PK), `wo_id`(FK), `temp_pv`, `timestamp` | 1분 주기 설비 시계열 로그. |
+| ProductionLogs | `log_id`(PK), `wo_id`(FK), `cr_temp`, `temp_sp`, `temp_pv`, `speed`, `timestamp` | 1분 주기 설비 시계열 로그. |
 | Inspections | `insp_id`(PK), `wo_id`(FK), `color_de` | 품질 검사 및 색차 측정 결과. |
 
 ### 5. 모듈별 세부 기능 요구사항 (Detailed Requirements)
@@ -56,7 +56,7 @@
     
     $$P = \frac{t_{current}}{t_{total}} \times 100$$
     
-- 환경 변수 시각화: '진행온도' 및 '포속 1~4'의 변화량을 실시간 꺾은선 그래프(Line Chart)로 제공함.
+- 환경 변수 시각화: 실측 '진행온도'(`temp_pv`) 및 지시·목표 온도(`temp_sp`, `cr_temp`)와 '포속'(`speed`, 원천 `TRD_SPEED1`)의 변화를 실시간 꺾은선 그래프(Line Chart)로 제공함. (원천의 포속 2~4는 스키마 단일 필드 `speed`로 통합.)
 
 ### 5.3. 생산 실적 및 품질 리포트 모듈 (Reporting & Quality)
 
@@ -79,10 +79,12 @@
 - 동작 원리: Spring Boot의 `@Scheduled` 어노테이션을 사용하여 전처리 완료된 통합 로그 파일의 로우(Row) 데이터를 MySQL의 `ProductionLogs` 테이블로 순차적 삽입(Insert)합니다.
 - 무결성 보장: 시뮬레이터가 읽는 모든 로그는 이미 `WorkOrders` 테이블의 고유 번호(`wo_id`)와 정합성이 확보된 상태이므로, 별도의 유효성 검사 로직을 간소화합니다.
 - 프론트엔드 연동: 데이터 적재와 동시에 WebSocket(STOMP)을 통해 Vue.js 클라이언트로 변경 사항을 Push하여 실시간 차트를 갱신합니다.
+- 설비 이상 알림(선택): 적재 시 `temp_sp`·`temp_pv`·`speed` 등을 기준으로 이상을 판정할 경우, 트렌드 토픽과 별도의 알림 토픽(`docs/api-details.md` §6.1)으로 푸시할 수 있다.
 
 ### 8. 명세와 구현 시 참고 (스키마·API 우선)
 
 - **물리 스키마의 정본**: 테이블·컬럼명·타입·관계는 `docs/data-schema-definition.md` **§2**를 따른다. 본 문서 §4의 표는 요약이며, 구현·마이그레이션·REST 필드는 §2와 일치시킨다.
 - **식별자 정합**: 전처리 데이터에서 `WorkOrders.wo_id`(의류 `PRODT_ORDER_NO`)와 `ProductionLogs.wo_id`(의류 `LOT_NO`)는 동일 로트를 가리키도록 이미 매핑되어 있다는 전제를 둔다. 상세는 `docs/data-generation-report.md` 및 정합성 지침을 참고한다.
 - **범위가 넓은 요구**: OEE, 로그인·권한, PDF/HTML 내보내기, 투입중량·염색길이 등은 목표 기능을 기술한 것이다. 현재 `docs/data-schema-definition.md`·`docs/api-details.md`에 없는 항목은 **추가 명세를 문서에 반영한 뒤** 구현한다.
-- **포속(속도) 필드**: §5.2의 '포속 1~4'는 현장 데이터 표현을 넓게 가리킨다. 스키마·API·WebSocket 샘플에 명시된 공정 속도는 `ProductionLogs.speed`(원천 `TRD_SPEED1`) **단일 필드**로 시작하고, 추가 축이 필요하면 스키마와 `api-details.md`를 함께 갱신한다.
+- **온도 필드**: `ProductionLogs`에는 목표 `cr_temp`, 지시 `temp_sp`, 실측 `temp_pv`를 둔다. 출처는 의류 원천 `CR_TEMP`, `TRD_TEMP_SP`, `TRD_TEMP_PV`이며, 전처리 산출·HTTP JSON·WebSocket 페이로드는 `docs/data-schema-definition.md`·`docs/api-details.md`와 일치시킨다.
+- **포속(속도) 필드**: §5.2의 '포속 1~4'는 현장 데이터 표현을 넓게 가리킨다. 스키마·API·WebSocket에 명시된 공정 속도는 `ProductionLogs.speed`(원천 `TRD_SPEED1`) **단일 필드**로 두고, 추가 축이 필요하면 스키마와 `api-details.md`를 함께 갱신한다.

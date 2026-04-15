@@ -32,7 +32,7 @@
 
 | 테이블명 | 주요 컬럼 (Fields) | 설명 | 출처 및 매핑 |
 | --- | --- | --- | --- |
-| ProductionLogs | `log_id`(PK), `wo_id`(FK), `timestamp`, `temp_pv`, `speed` | 실시간 공정 수집 데이터 | 의류 공정 `TRD_TEMP_PV`, `TRD_SPEED1`  |
+| ProductionLogs | `log_id`(PK), `wo_id`(FK), `timestamp`, `cr_temp`, `temp_sp`, `temp_pv`, `speed` | 실시간 공정 수집 데이터 | 의류 공정 `CR_TEMP`, `TRD_TEMP_SP`, `TRD_TEMP_PV`, `TRD_SPEED1`  |
 | ProcessStatus | `wo_id`(PK/FK), `current_seq`, `total_seq`, `progress_rate` | 실시간 공정 진척도 현황 | 의류 공정 `SEQ_NO` 기반 연산  |
 
 ---

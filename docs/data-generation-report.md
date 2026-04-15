@@ -22,6 +22,21 @@
 - 비공개 정보 해제: 에스윈텍의 비공개 제품 `code`를 의류 공정의 `JOB_CD`("F12-1203")로 치환하고, 제품명(`name`)을 공정 성격에 맞는 가상 명칭으로 명명함.
 - 계층 유지: 에스윈텍의 `hierarchy` 정보를 활용하여 제품군 분류 체계는 원본의 구조를 보존함.
 
+### 2.3. 공정 실행 로그(ProductionLogs) 전처리 산출
+
+통합 입력 `integrated_manufacture_data.csv`에는 의류 공정 트렌드에 해당하는 컬럼이 포함되며, 백엔드 적재용 `data/backend_ready/ProductionLogs.csv`(또는 동등 산출물)에는 다음 매핑을 둔다.
+
+| 스키마 컬럼 (`docs/data-schema-definition.md` §2.4) | 의류 원천 컬럼 (가이드북 `PRODUCTION_TREND` 기준) |
+| --- | --- |
+| `cr_temp` | `CR_TEMP` |
+| `temp_sp` | `TRD_TEMP_SP` |
+| `temp_pv` | `TRD_TEMP_PV` |
+| `speed` | `TRD_SPEED1` |
+| `timestamp` | `INSRT_DT` |
+| `wo_id` | `LOT_NO` |
+
+통합 입력에 위 원천 컬럼이 없으면 전처리 단계에서 컬럼을 보강하거나, 스키마에서 해당 필드를 선택적으로 두는 등 팀 합의 후 `data-schema-definition.md`와 본 절을 함께 갱신한다.
+
 ### 3. 품질 데이터 매핑 결과
 
 실측 데이터의 한계를 보완하기 위해 다음과 같이 품질 지표를 연결하였습니다.

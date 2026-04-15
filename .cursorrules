@@ -30,14 +30,14 @@
 
 ## 시뮬레이터 최우선 구현
 
-- `data/PRODUCTION_TREND_preprocessed.csv` (또는 프로젝트에 배치된 동일 역할의 경로)를 읽어 1분 주기로 MySQL `ProductionLogs` 등 스키마에 맞게 적재하는 `@Scheduled` 로직을 우선 구현한다.
+- `data/backend_ready/ProductionLogs.csv` 등 전처리 산출물(`docs/data-generation-report.md` §2.3)을 읽어 1분 주기로 MySQL `ProductionLogs` 등 스키마에 맞게 적재하는 `@Scheduled` 로직을 우선 구현한다.
 - 스케줄러는 시뮬레이션 제어 API(`docs/api-details.md`의 Simulation 섹션)와 연동 가능한 형태로 둔다.
 
 ## 실시간 통신
 
 - HTTP/REST로 조회·제어하고, 실시간 푸시는 API 명세에 정의된 STOMP WebSocket만 사용한다.
 - 엔드포인트: `/ws-mes`
-- 구독 토픽: `/topic/production-trend`
+- 구독 토픽: `/topic/production-trend`. 설비 이상 알림은 `docs/api-details.md` §6.1의 별도 토픽을 사용할 수 있다.
 - 메시지 필드 형태는 `docs/api-details.md`의 예시를 따른다.
 
 ## 코딩 스타일

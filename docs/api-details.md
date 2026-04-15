@@ -69,14 +69,35 @@
 
 - Endpoint: `/ws-mes`
 - Topic (Subscribe): `/topic/production-trend`
-- 데이터 내용:
+- 데이터 내용: `docs/data-schema-definition.md` §2.4 `ProductionLogs`와 동일한 스네이크 케이스 필드를 전제로 하며, 진척률 등 파생 값은 아래와 같이 포함할 수 있다.
 
     ```json
     {
       "wo_id": "F2205040066",
+      "cr_temp": 70,
+      "temp_sp": 70.0,
       "temp_pv": 69.5,
       "speed": 65,
       "timestamp": "2022-05-04 10:30:00",
       "progress": 45.2
     }
     ```
+
+### 6.1. WebSocket 설비 이상 알림 (선택 구현)
+
+설비 이상 감지 시 작업자 확인용 메시지를 **트렌드와 분리된 토픽**으로 보낼 수 있다.
+
+- Topic (Subscribe): `/topic/equipment-alert`
+- 데이터 내용(예시, 필드는 구현 시 확정):
+
+    ```json
+    {
+      "machine_id": "R001",
+      "wo_id": "F2205040066",
+      "alert_type": "TEMP_HIGH",
+      "message": "설비 R001 이상 감지: 온도 높음. 확인 요망.",
+      "timestamp": "2022-05-04 10:30:00"
+    }
+    ```
+
+`GET /production/logs/{wo_id}` 응답의 각 요소도 §2.4 컬럼과 동일한 키를 사용한다.

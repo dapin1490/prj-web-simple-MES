@@ -36,12 +36,12 @@
 
 - **스키마 준수**: DB 컬럼과 REST JSON 키는 `docs/data-schema-definition.md` 및 `docs/api-details.md`의 스네이크 케이스 규칙을 따른다. Java 등 코드 내부의 camelCase는 프로젝트 관례에 맞춘다.
 - **전처리 재구현 금지**: 백엔드에서 CSV를 임의로 변환·보정하는 로직을 두지 않는다. `docs/data-generation-report.md`에 기술된 전처리된 산출물을 로드해 시뮬레이션한다.
-- **우선 과제**: `PRODUCTION_TREND_preprocessed.csv`를 읽어 1분 주기로 MySQL에 적재하는 스케줄러를 먼저 안정화하고, 시뮬레이션 시작·정지·초기화 API와 연동한다.
+- **우선 과제**: 전처리 산출 `data/backend_ready/ProductionLogs.csv`(등)를 읽어 1분 주기로 MySQL에 적재하는 스케줄러를 먼저 안정화하고, 시뮬레이션 시작·정지·초기화 API와 연동한다. 필드 정의는 `docs/data-schema-definition.md` §2.4 및 `docs/data-generation-report.md` §2.3과 일치시킨다.
 
 ## 4. API와 실시간 채널
 
 - **REST**: Base URL `http://localhost:8080/api/v1` (배포 환경은 설정으로 치환), 응답은 `success`, `data`, `message` 형식.
-- **실시간**: 모든 실시간 데이터는 STOMP WebSocket 엔드포인트 `/ws-mes`, 구독 `/topic/production-trend`를 사용한다. 폴링으로 동일 데이터를 흉내 내지 않는다.
+- **실시간**: 공정 트렌드는 STOMP WebSocket 엔드포인트 `/ws-mes`, 구독 `/topic/production-trend`를 사용한다. 설비 이상 알림은 `docs/api-details.md` §6.1의 별도 토픽(예: `/topic/equipment-alert`)으로 분리할 수 있다. 폴링으로 동일 데이터를 흉내 내지 않는다.
 
 ## 5. 프론트엔드 HTTP 계층
 
