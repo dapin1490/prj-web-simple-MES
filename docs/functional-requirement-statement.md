@@ -11,7 +11,7 @@
 - Backend: Java Spring Boot 3.x.
 - Frontend: Vue.js 3.x.
 - Database: MySQL 8.x.
-- Communication: REST API, STOMP 기반 WebSocket (실시간 데이터 전송).
+- Communication: STOMP 기반 WebSocket 메인 통신 (조회·제어·실시간 데이터 전송).
 
 ### 3. 데이터 통합 및 정합성 전략 (Data Integration Strategy)
 
@@ -83,8 +83,8 @@
 
 ### 8. 명세와 구현 시 참고 (스키마·API 우선)
 
-- **물리 스키마의 정본**: 테이블·컬럼명·타입·관계는 `docs/data-schema-definition.md` **§2**를 따른다. 본 문서 §4의 표는 요약이며, 구현·마이그레이션·REST 필드는 §2와 일치시킨다.
+- **물리 스키마의 정본**: 테이블·컬럼명·타입·관계는 `docs/data-schema-definition.md` **§2**를 따른다. 본 문서 §4의 표는 요약이며, 구현·마이그레이션·STOMP 메시지 필드는 §2와 일치시킨다.
 - **식별자 정합**: 전처리 데이터에서 `WorkOrders.wo_id`(의류 `PRODT_ORDER_NO`)와 `ProductionLogs.wo_id`(의류 `LOT_NO`)는 동일 로트를 가리키도록 이미 매핑되어 있다는 전제를 둔다. 상세는 `docs/data-generation-report.md` 및 정합성 지침을 참고한다.
 - **범위가 넓은 요구**: OEE, 로그인·권한, PDF/HTML 내보내기, 투입중량·염색길이 등은 목표 기능을 기술한 것이다. 현재 `docs/data-schema-definition.md`·`docs/api-details.md`에 없는 항목은 **추가 명세를 문서에 반영한 뒤** 구현한다.
-- **온도 필드**: `ProductionLogs`에는 목표 `cr_temp`, 지시 `temp_sp`, 실측 `temp_pv`를 둔다. 출처는 의류 원천 `CR_TEMP`, `TRD_TEMP_SP`, `TRD_TEMP_PV`이며, 전처리 산출·HTTP JSON·WebSocket 페이로드는 `docs/data-schema-definition.md`·`docs/api-details.md`와 일치시킨다.
+- **온도 필드**: `ProductionLogs`에는 목표 `cr_temp`, 지시 `temp_sp`, 실측 `temp_pv`를 둔다. 출처는 의류 원천 `CR_TEMP`, `TRD_TEMP_SP`, `TRD_TEMP_PV`이며, 전처리 산출·STOMP JSON 페이로드는 `docs/data-schema-definition.md`·`docs/api-details.md`와 일치시킨다.
 - **포속(속도) 필드**: §5.2의 '포속 1~4'는 현장 데이터 표현을 넓게 가리킨다. 스키마·API·WebSocket에 명시된 공정 속도는 `ProductionLogs.speed`(원천 `TRD_SPEED1`) **단일 필드**로 두고, 추가 축이 필요하면 스키마와 `api-details.md`를 함께 갱신한다.
