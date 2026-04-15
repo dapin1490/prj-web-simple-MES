@@ -8,7 +8,7 @@
 
 - **구성**: `backend/`는 **Java 17 이상, Spring Boot 3.x, MySQL 8.x**. `frontend/`는 **Vue.js 3.x**.
 - **모노레포**: 백엔드와 프론트엔드는 루트 아래 디렉터리로 분리되어 있다. 한쪽만을 가정한 전역 설정이나 경로 가정은 피한다.
-- **실시간 데이터**: HTTP로 조회·제어하고, **실시간 푸시는 STOMP 기반 WebSocket만** 사용한다.
+- **통신 원칙**: 조회·제어·실시간 푸시 모두 **STOMP 기반 WebSocket**을 메인으로 사용한다.
   - 엔드포인트: `/ws-mes`
   - 구독 토픽: `/topic/production-trend`
   - 폴링이나 별도 소켓으로 동일 목적을 대체하는 제안은 하지 않는다. 상세는 `docs/api-details.md`를 따른다.
@@ -65,10 +65,10 @@ $$P = \frac{t_{\mathrm{current}}}{t_{\mathrm{total}}} \times 100$$
 
 - **Vue 3**, **Composition API**, **`<script setup>`** 형식을 사용한다. Options API 위주 템플릿이나 구식 패턴으로 새 코드를 제안하지 않는다.
 
-### 5.2 REST 응답 규격
+### 5.2 STOMP 응답 규격
 
-- 백엔드 REST 응답은 공통으로 **`success`**, **`data`**, **`message`** 필드를 포함하는 형태를 유지한다 (`docs/api-details.md`).
-- 프론트엔드에서는 이 규격을 처리하는 **공통 Axios 인터셉터** 패턴을 따른다.
+- 백엔드 STOMP 응답은 공통으로 **`success`**, **`data`**, **`message`** 필드를 포함하는 형태를 유지한다 (`docs/api-details.md`).
+- 프론트엔드에서는 이 규격을 처리하는 **공통 STOMP 메시지 래퍼** 패턴을 따른다.
 
 ### 5.3 스타일 가이드
 

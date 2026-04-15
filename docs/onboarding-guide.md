@@ -37,7 +37,7 @@
 | 순서 | 문서 | 읽는 이유 |
 | --- | --- | --- |
 | 8 | [`system-architecture-design.md`](system-architecture-design.md) | 레이어, 데이터 흐름, 시뮬레이터와 WebSocket 역할 |
-| 9 | [`api-details.md`](api-details.md) | REST Base URL, 응답 형식, 엔드포인트 목록, STOMP 엔드포인트와 토픽 |
+| 9 | [`api-details.md`](api-details.md) | STOMP 연결 정보, 요청/응답 destination, 공통 응답 형식, 토픽/큐 목록 |
 
 ### 5단계: 프론트엔드 담당자만
 
@@ -80,7 +80,7 @@
 
 - [ ] 이 시스템이 런타임에 원천 CSV를 새로 전처리하지 않는 이유를 말할 수 있다.
 - [ ] `Products`, `SalesOrders`, `WorkOrders`, `ProductionLogs`, `Inspections`의 역할과 대략적인 관계를 말할 수 있다.
-- [ ] REST Base URL과 WebSocket 엔드포인트, 구독 토픽을 `api-details.md`에서 찾을 수 있다.
+- [ ] STOMP 연결 엔드포인트(`/ws-mes`), 요청 prefix(`/app`), 구독 토픽/큐를 `api-details.md`에서 찾을 수 있다.
 - [ ] 스키마나 API를 바꿀 때 어떤 문서를 함께 수정해야 하는지 안다 (`COLLABORATION.md`).
 - [ ] `ProductionLogs`의 온도·속도 필드(`cr_temp`, `temp_sp`, `temp_pv`, `speed`)가 스키마 §2.4와 전처리 매핑(`data-generation-report.md` §2.3)에서 어떻게 정의되는지 안다.
 

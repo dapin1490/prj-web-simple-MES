@@ -16,7 +16,7 @@
 
 - Dashboard Component: 실시간 공정 트렌드(온도, 속도) 및 KPI(진척도, 품질 합격률) 시각화.
 - Management UI: 수주 정보 확인, 작업 지시 발행 및 생산 이력 리포트 조회.
-- WebSocket Client: STOMP 프로토콜을 통해 백엔드에서 푸시되는 실시간 로그 수신.
+- WebSocket Client: STOMP 프로토콜로 백엔드의 조회 응답, 제어 응답, 실시간 로그를 수신.
 
 ### 2.2. Service Layer (Spring Boot)
 
@@ -47,10 +47,12 @@
     - 파일 포인터를 유지하며 한 줄씩 읽어 실행 중인 `WorkOrder`와 매핑.
     - 실제 시간 대비 배속(Scaling) 기능을 제공하여 데모 속도 조절 가능.
 
-### 4.2. 실시간 통신 (Messaging)
+### 4.2. 통신 (Messaging)
 
-- 프로토콜: WebSocket / STOMP.
-- Topic 구조: `/topic/production-trend` (`docs/api-details.md` §6와 동일). 설비 이상 알림은 §6.1의 별도 토픽을 사용할 수 있다.
+- 프로토콜: WebSocket / STOMP (SockJS fallback).
+- 통신 원칙: 조회·제어·실시간 스트리밍을 STOMP 채널로 통일한다.
+- Destination 구조: 요청은 `/app/...`, 구독은 `/topic/...`, `/queue/...`, `/user/queue/...`를 사용한다.
+- 공정 트렌드 토픽: `/topic/production-trend` (`docs/api-details.md` §6와 동일). 설비 이상 알림은 §6.1의 별도 토픽을 사용할 수 있다.
 
 ### 5. 인프라 아키텍처
 

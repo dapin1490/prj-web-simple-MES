@@ -14,14 +14,14 @@
 ## 모노레포 구조
 
 - 백엔드: `be-mes-project/` (Spring Boot, Gradle). 기술 버전은 해당 `build.gradle`을 따른다.
-- 프론트엔드: Vue.js 3.x. 루트 `frontend/` 디렉터리는 도입 시 추가한다.
+- 프론트엔드: Vue.js 3.x. 루트 `frontend/` 디렉터리에 포함되어 있다.
 
-엔티티, 마이그레이션, REST JSON 계약을 만들거나 수정할 때는 `docs/data-schema-definition.md`의 컬럼명·타입과 `docs/api-details.md`의 JSON 키(스네이크 케이스) 규칙을 따른다.
+엔티티, 마이그레이션, STOMP JSON 계약을 만들거나 수정할 때는 `docs/data-schema-definition.md`의 컬럼명·타입과 `docs/api-details.md`의 JSON 키(스네이크 케이스) 규칙을 따른다.
 
 ## 데이터 처리 원칙
 
 - 백엔드에서 원천 데이터를 다시 가공하거나 재해석하는 로직을 추가하지 않는다. 전처리는 `docs/data-generation-report.md`와 동봉된 데이터 파이프라인에서 이미 완료된 것으로 본다.
-- 시뮬레이션은 사전 전처리된 CSV를 읽어 DB에 적재하고, 제어 API와 WebSocket으로 노출하는 데 집중한다.
+- 시뮬레이션은 사전 전처리된 CSV를 읽어 DB에 적재하고, 제어/조회/스트리밍을 STOMP WebSocket으로 노출하는 데 집중한다.
 
 ## 기술 스택 (강제)
 
@@ -35,7 +35,7 @@
 
 ## 실시간 통신
 
-- HTTP/REST로 조회·제어하고, 실시간 푸시는 API 명세에 정의된 STOMP WebSocket만 사용한다.
+- 조회·제어·실시간 푸시는 API 명세에 정의된 STOMP WebSocket으로 통일한다.
 - 엔드포인트: `/ws-mes`
 - 구독 토픽: `/topic/production-trend`. 설비 이상 알림은 `docs/api-details.md` §6.1의 별도 토픽을 사용할 수 있다.
 - 메시지 필드 형태는 `docs/api-details.md`의 예시를 따른다.
@@ -51,6 +51,6 @@
 - Conventional Commits를 사용한다.
 - 작업 영역 접두어 예: `feat(be):`, `fix(fe):`, `docs:`, `chore:`
 
-## 프론트엔드 API 계층
+## 프론트엔드 메시지 계층
 
-- `docs/api-details.md`의 공통 응답 규격 `success`, `data`, `message`를 처리하는 공통 Axios 인터셉터를 구현하고, API 호출은 이를 경유한다.
+- `docs/api-details.md`의 공통 응답 규격 `success`, `data`, `message`를 처리하는 공통 STOMP 메시지 래퍼를 구현하고, 호출은 이를 경유한다.

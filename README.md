@@ -25,8 +25,8 @@
 | 구분 | 기술 |
 | --- | --- |
 | **Backend** | Java 17, Spring Boot 3.x, MySQL 8.x |
-| **Frontend** | Vue.js 3.x, Pinia, Axios |
-| **통신** | REST API (조회·제어), **STOMP WebSocket** (`/ws-mes`, 토픽 `/topic/production-trend`, 선택 `/topic/equipment-alert`는 `docs/api-details.md` §6.1) |
+| **Frontend** | Vue.js 3.x, Pinia, Vue Router, @stomp/stompjs, sockjs-client, Chart.js |
+| **통신** | **STOMP WebSocket 메인 통신** (`/ws-mes`, `/app`, 토픽 `/topic/production-trend`, 선택 `/topic/equipment-alert`) |
 
 실시간 공정 트렌드는 REST 폴링이 아니라 **STOMP 기반 WebSocket**으로 전달하는 것을 전제로 합니다. 상세는 `docs/api-details.md`를 따릅니다.
 
@@ -88,7 +88,7 @@ Windows에서는 `gradlew.bat`을 사용합니다. 빌드만 할 때는 `./gradl
 
 ### 3) 프론트엔드 실행 (npm)
 
-프론트엔드 앱이 저장소에 추가되면 해당 디렉터리에서 `npm install` 및 `npm run dev`를 실행한다. API Base URL과 WebSocket 엔드포인트는 `docs/api-details.md`의 로컬 기준값(`http://localhost:8080/api/v1`, `/ws-mes`)에 맞춰 환경 변수 또는 프록시를 설정한다.
+프론트엔드 앱이 저장소에 추가되면 해당 디렉터리에서 `npm install` 및 `npm run dev`를 실행한다. STOMP 연결 정보(`ws` 호스트, `/ws-mes`, `/app`, 구독 토픽)는 `docs/api-details.md` 기준으로 환경 변수 또는 프록시를 설정한다.
 
 ---
 
