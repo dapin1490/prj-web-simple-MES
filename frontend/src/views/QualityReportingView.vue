@@ -388,11 +388,13 @@ function formatJsonBlock(value) {
   border-radius: var(--radius-sm);
   font-size: 0.75rem;
   font-weight: 700;
+  color: var(--feature-view-alert-badge-color);
+  background: var(--feature-view-alert-badge-background);
 }
 
 .feature-view__alert-badge--quality {
-  color: #4e342e;
-  background: rgba(141, 110, 99, 0.2);
+  --feature-view-alert-badge-color: var(--color-alert-badge-quality-text);
+  --feature-view-alert-badge-background: var(--color-alert-badge-quality-bg);
 }
 
 .report-viewer {

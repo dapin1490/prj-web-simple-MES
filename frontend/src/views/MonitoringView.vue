@@ -618,20 +618,22 @@ function onMachineFilterChange() {
   border-radius: var(--radius-sm);
   font-size: 0.75rem;
   font-weight: 700;
+  color: var(--feature-view-alert-badge-color);
+  background: var(--feature-view-alert-badge-background);
 }
 
 .feature-view__alert-badge--normal {
-  color: #1b5e20;
-  background: rgba(46, 125, 50, 0.14);
+  --feature-view-alert-badge-color: var(--color-alert-badge-normal-text);
+  --feature-view-alert-badge-background: var(--color-alert-badge-normal-bg);
 }
 
 .feature-view__alert-badge--warn {
-  color: #f57f17;
-  background: rgba(249, 168, 37, 0.18);
+  --feature-view-alert-badge-color: var(--color-alert-badge-warn-text);
+  --feature-view-alert-badge-background: var(--color-alert-badge-warn-bg);
 }
 
 .feature-view__alert-badge--danger {
-  color: #b71c1c;
-  background: rgba(198, 40, 40, 0.18);
+  --feature-view-alert-badge-color: var(--color-alert-badge-danger-text);
+  --feature-view-alert-badge-background: var(--color-alert-badge-danger-bg);
 }
 </style>
