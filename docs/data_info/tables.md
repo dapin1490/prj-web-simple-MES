@@ -51,4 +51,4 @@
 
 1. 데이터 밀도 차이 해결: 에스윈텍 데이터는 일별(Daily) 단위이며, 의류 공정 데이터는 분별(Minute) 단위입니다. 따라서 하나의 `SalesOrder`를 여러 개의 `WorkOrder`(LOT 단위)로 분할하여 관리하는 1:N 관계를 설정하는 것이 정합성에 맞습니다.
 2. ID 체계 통합: 에스윈텍의 비공개 모델명(`code`)을 의류 공정의 `product_id`로 치환하고, 의류 공정의 `LOT_NO`를 MES 내의 `wo_id`로 사용하여 물리적 데이터를 연결합니다.
-3. 실시간 진척도 계산: `WorkOrders`의 목표 수량 대비 `ProductionLogs`에 기록된 가장 최신의 `SEQ_NO` 비중을 계산하여 실시간 대시보드 기능을 구현합니다.
+3. 실시간 진척도 계산: 실생산 수량 컬럼 부재로 `ProductionLogs`의 `SEQ_NO` 기반 대체 지표를 사용합니다. 로트별 `progress_rate = latest_seq / total_seq` (`total_seq = max(SEQ_NO)` by `wo_id`)로 계산하고, 전체 진척도는 `planned_qty` 가중 평균을 기본으로 사용합니다.

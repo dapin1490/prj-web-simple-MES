@@ -48,7 +48,7 @@
 | --- | --- | --- | --- | --- |
 | 작업 지시 목록 | `/app/execution/work-orders` | `/user/queue/execution/work-orders` | 수주로부터 분할된 로트(LOT) 단위 작업 리스트. | `WorkOrders` |
 | 실시간 로그 조회 | `/app/execution/production/logs` | `/user/queue/execution/production/logs` | 요청 본문 `wo_id`로 특정 로트 로그 조회. | `ProductionLogs` |
-| 진척률 정보 조회 | `/app/execution/production/progress` | `/user/queue/execution/production/progress` | 전 가동 라인의 목표 대비 현재 진척률 집계 정보. | `WorkOrders` |
+| 진척률 정보 조회 | `/app/execution/production/progress` | `/user/queue/execution/production/progress` | 전 가동 라인의 SEQ 기반 진척률(수량 대체 지표) 집계 정보. | `WorkOrders`, `ProductionLogs` |
 
 ### 4. 시뮬레이션 제어 API (Simulation)
 
@@ -275,11 +275,16 @@
 
 절 3의 진척률 집계를 구현할 때 참고할 수 있는 산출 예시는 다음과 같다. 배포·구현에 따라 다를 수 있으며 본문 표(절 3)가 우선한다.
 
+- 본 프로젝트의 진척률은 실생산 수량 컬럼 부재로 인해 `SEQ_NO` 기반 대체 지표를 사용한다.
 - 작업지시별 progress:
-  - `t_current` = 해당 `wo_id`의 현재 적재 로그 건수
-  - `t_total` = `WorkOrders.planned_qty`
-  - `P = min(100, (t_current / t_total) * 100)` (소수점 한 자리 반올림)
-- 전체 progress: 작업지시별 progress 평균
+  - `seq_current` = 해당 `wo_id`의 최신 `SEQ_NO`
+  - `seq_total` = 해당 `wo_id`의 최대 `SEQ_NO`
+  - `ratio = seq_current / seq_total` (`seq_total <= 0`이면 `0`)
+  - `P = min(100, max(0, ratio * 100))` (소수점 한 자리 반올림)
+- 전체 progress(권장):
+  - `overall = sum(planned_qty * ratio) / sum(planned_qty) * 100`
+  - `planned_qty` 결측 또는 0인 항목은 가중 평균 분모에서 제외
+- 전체 progress(대안): 작업지시별 `P` 단순 평균
 
 ### 부록 D. 클라이언트 도구 입력 예시 (Postman 등)
 
