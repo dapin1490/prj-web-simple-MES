@@ -5,7 +5,8 @@ import Chart from 'chart.js/auto'
 const props = defineProps({
   /**
    * 시간순(과거→최신) 포인트. label은 X축 문자열.
-   * @type {{ label: string, temp_pv: number, speed: number }[]}
+   * cr_temp·temp_sp는 백엔드 미전달 시 null 가능(차트에서 구간 끊김).
+   * @type {{ label: string, cr_temp: number | null, temp_sp: number | null, temp_pv: number, speed: number }[]}
    */
   points: {
     type: Array,
@@ -22,13 +23,21 @@ function applyChartData() {
   }
 
   const labels = props.points.map((point) => point.label)
-  const temperatureValues = props.points.map((point) => point.temp_pv)
+  const crTempValues = props.points.map((point) =>
+    point.cr_temp === null || point.cr_temp === undefined ? null : point.cr_temp,
+  )
+  const tempSpValues = props.points.map((point) =>
+    point.temp_sp === null || point.temp_sp === undefined ? null : point.temp_sp,
+  )
+  const tempPvValues = props.points.map((point) => point.temp_pv)
   const speedValues = props.points.map((point) => point.speed)
 
   if (chartInstance) {
     chartInstance.data.labels = labels
-    chartInstance.data.datasets[0].data = temperatureValues
-    chartInstance.data.datasets[1].data = speedValues
+    chartInstance.data.datasets[0].data = crTempValues
+    chartInstance.data.datasets[1].data = tempSpValues
+    chartInstance.data.datasets[2].data = tempPvValues
+    chartInstance.data.datasets[3].data = speedValues
     chartInstance.update('none')
     return
   }
@@ -39,8 +48,31 @@ function applyChartData() {
       labels,
       datasets: [
         {
-          label: 'temp_pv (℃)',
-          data: temperatureValues,
+          label: 'cr_temp 목표 (℃)',
+          data: crTempValues,
+          yAxisID: 'y',
+          borderColor: '#2e7d32',
+          backgroundColor: 'rgba(46, 125, 50, 0.08)',
+          borderDash: [6, 4],
+          fill: false,
+          tension: 0.2,
+          pointRadius: 0,
+          spanGaps: true,
+        },
+        {
+          label: 'temp_sp 지시 (℃)',
+          data: tempSpValues,
+          yAxisID: 'y',
+          borderColor: '#f9a825',
+          backgroundColor: 'rgba(249, 168, 37, 0.1)',
+          fill: false,
+          tension: 0.2,
+          pointRadius: 0,
+          spanGaps: true,
+        },
+        {
+          label: 'temp_pv 실측 (℃)',
+          data: tempPvValues,
           yAxisID: 'y',
           borderColor: '#c62828',
           backgroundColor: 'rgba(198, 40, 40, 0.12)',
@@ -127,6 +159,6 @@ onBeforeUnmount(() => {
 <style scoped>
 .production-trend-chart {
   position: relative;
-  height: 280px;
+  height: 320px;
 }
 </style>

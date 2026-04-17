@@ -79,6 +79,11 @@ const filteredRealtimeTrendMessageList = computed(() => {
 
 const logPanelRef = ref(null)
 
+function parseOptionalFiniteNumber(fieldValue) {
+  const numericValue = Number(fieldValue)
+  return Number.isFinite(numericValue) ? numericValue : null
+}
+
 const chartSeriesPoints = computed(() => {
   const parsedRows = []
   for (const messageItem of filteredRealtimeTrendMessageList.value) {
@@ -97,13 +102,21 @@ const chartSeriesPoints = computed(() => {
     parsedRows.push({
       sortKey,
       label: formatChartAxisLabel(messageItem.timestamp),
+      cr_temp: parseOptionalFiniteNumber(messageItem.cr_temp),
+      temp_sp: parseOptionalFiniteNumber(messageItem.temp_sp),
       temp_pv: temperatureValue,
       speed: speedValue,
     })
   }
   parsedRows.sort((firstRow, secondRow) => firstRow.sortKey - secondRow.sortKey)
   const trimmedRows = parsedRows.slice(-CHART_MAX_POINTS)
-  return trimmedRows.map(({ label, temp_pv, speed }) => ({ label, temp_pv, speed }))
+  return trimmedRows.map(({ label, cr_temp, temp_sp, temp_pv, speed }) => ({
+    label,
+    cr_temp,
+    temp_sp,
+    temp_pv,
+    speed,
+  }))
 })
 
 const logStreamLines = computed(() => {
@@ -112,10 +125,12 @@ const logStreamLines = computed(() => {
   return windowItems.map((messageItem) => {
     const workOrderLabel = getFirstDefinedValue(messageItem, ['wo_id'])
     const timestampLabel = getFirstDefinedValue(messageItem, ['timestamp'])
+    const crTempLabel = getFirstDefinedValue(messageItem, ['cr_temp'])
+    const tempSpLabel = getFirstDefinedValue(messageItem, ['temp_sp'])
     const temperatureLabel = getFirstDefinedValue(messageItem, ['temp_pv'])
     const speedLabel = getFirstDefinedValue(messageItem, ['speed'])
     const progressLabel = getFirstDefinedValue(messageItem, ['progress'])
-    return `[${timestampLabel}] wo_id=${workOrderLabel} temp_pv=${temperatureLabel} speed=${speedLabel} progress=${progressLabel}`
+    return `[${timestampLabel}] wo_id=${workOrderLabel} cr_temp=${crTempLabel} temp_sp=${tempSpLabel} temp_pv=${temperatureLabel} speed=${speedLabel} progress=${progressLabel}`
   })
 })
 
@@ -239,7 +254,7 @@ function refreshMonitoringData() {
     <section class="feature-view__panel">
       <h3>실시간 트렌드 차트</h3>
       <p v-if="chartSeriesPoints.length === 0">
-        차트에 표시할 수 있는 데이터가 없습니다. (temp_pv, speed, timestamp 필요)
+        차트에 표시할 수 있는 데이터가 없습니다. (temp_pv, speed, timestamp 필요. cr_temp, temp_sp는 선택)
       </p>
       <ProductionTrendChart v-else :points="chartSeriesPoints" />
     </section>
@@ -261,6 +276,8 @@ function refreshMonitoringData() {
             <tr>
               <th>wo_id</th>
               <th>timestamp</th>
+              <th>cr_temp</th>
+              <th>temp_sp</th>
               <th>temp_pv</th>
               <th>speed</th>
               <th>progress</th>
@@ -270,6 +287,8 @@ function refreshMonitoringData() {
             <tr v-for="(messageItem, messageIndex) in filteredRealtimeTrendMessageList" :key="messageIndex">
               <td>{{ getFirstDefinedValue(messageItem, ['wo_id']) }}</td>
               <td>{{ getFirstDefinedValue(messageItem, ['timestamp']) }}</td>
+              <td>{{ getFirstDefinedValue(messageItem, ['cr_temp']) }}</td>
+              <td>{{ getFirstDefinedValue(messageItem, ['temp_sp']) }}</td>
               <td>{{ getFirstDefinedValue(messageItem, ['temp_pv']) }}</td>
               <td>{{ getFirstDefinedValue(messageItem, ['speed']) }}</td>
               <td>{{ getFirstDefinedValue(messageItem, ['progress']) }}</td>
@@ -346,6 +365,8 @@ function refreshMonitoringData() {
           <thead>
             <tr>
               <th>timestamp</th>
+              <th>cr_temp</th>
+              <th>temp_sp</th>
               <th>temp_pv</th>
               <th>speed</th>
             </tr>
@@ -353,6 +374,8 @@ function refreshMonitoringData() {
           <tbody>
             <tr v-for="(productionLog, logIndex) in productionLogList" :key="String(productionLog.log_id ?? logIndex)">
               <td>{{ getFirstDefinedValue(productionLog, ['timestamp', 'created_at']) }}</td>
+              <td>{{ getFirstDefinedValue(productionLog, ['cr_temp']) }}</td>
+              <td>{{ getFirstDefinedValue(productionLog, ['temp_sp']) }}</td>
               <td>{{ getFirstDefinedValue(productionLog, ['temp_pv']) }}</td>
               <td>{{ getFirstDefinedValue(productionLog, ['speed']) }}</td>
             </tr>
