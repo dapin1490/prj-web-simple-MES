@@ -4,27 +4,14 @@ import SockJS from 'sockjs-client/dist/sockjs'
 
 const DEFAULT_MAX_REALTIME_MESSAGE_COUNT = 50
 const DEFAULT_RECONNECT_DELAY_MS = 3000
-
-function getHttpOriginFromApiBaseUrl() {
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
-  if (typeof apiBaseUrl !== 'string' || apiBaseUrl.trim() === '') {
-    return 'http://localhost:8080'
-  }
-
-  try {
-    const parsedUrl = new URL(apiBaseUrl)
-    return `${parsedUrl.protocol}//${parsedUrl.host}`
-  } catch {
-    return 'http://localhost:8080'
-  }
-}
+const DEFAULT_WS_ENDPOINT = 'http://localhost:8080/ws-mes'
 
 function getWebSocketEndpoint() {
   const configuredEndpoint = import.meta.env.VITE_WS_ENDPOINT
   if (typeof configuredEndpoint === 'string' && configuredEndpoint.trim() !== '') {
     return configuredEndpoint
   }
-  return `${getHttpOriginFromApiBaseUrl()}/ws-mes`
+  return DEFAULT_WS_ENDPOINT
 }
 
 function getProductionTrendTopic() {

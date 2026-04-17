@@ -1,8 +1,9 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
 import { resetSimulation, startSimulation, stopSimulation } from '@/api/simulationApi'
-import { ApiClientError } from '@/api/httpClient'
+import { StompClientError } from '@/api/httpClient'
+import { useProductionTrendSocket } from '@/composables/useProductionTrendSocket'
 
 const menuItems = [
   { to: '/dashboard', label: '대시보드' },
@@ -18,6 +19,37 @@ const simulationStatusMessage = ref('')
 const simulationStatusTone = ref('normal')
 
 const isSimulationRunning = computed(() => simulationStatusLabel.value === '가동 중')
+const {
+  connectionState: wsConnectionState,
+  connect: connectProductionTrendSocket,
+} = useProductionTrendSocket()
+
+const wsConnectionStatusLabel = computed(() => {
+  if (wsConnectionState.value === 'connecting') {
+    return '연결 중'
+  }
+  if (wsConnectionState.value === 'connected') {
+    return '연결됨'
+  }
+  if (wsConnectionState.value === 'reconnecting') {
+    return '재연결 중'
+  }
+  return '끊김'
+})
+
+const wsConnectionStatusClassName = computed(() => {
+  if (wsConnectionState.value === 'connected') {
+    return 'app-header__status-value--running'
+  }
+  if (wsConnectionState.value === 'connecting' || wsConnectionState.value === 'reconnecting') {
+    return 'app-header__status-value--warning'
+  }
+  return 'app-header__status-value--stopped'
+})
+
+onMounted(() => {
+  connectProductionTrendSocket()
+})
 
 function setSimulationStatusMessage(message, tone = 'normal') {
   simulationStatusMessage.value = message
@@ -52,7 +84,7 @@ async function runSimulationAction(actionType) {
     setSimulationStatusMessage('시뮬레이션 초기화 요청을 완료했습니다.', 'warning')
   } catch (error) {
     const statusMessage =
-      error instanceof ApiClientError
+      error instanceof StompClientError
         ? error.message
         : '시뮬레이션 제어 요청 중 오류가 발생했습니다.'
     setSimulationStatusMessage(statusMessage, 'danger')
@@ -82,6 +114,12 @@ async function runSimulationAction(actionType) {
       <header class="app-header">
         <div class="app-header__status">
           <p class="app-header__item"><strong>권한</strong>: {{ userRoleLabel }}</p>
+          <p class="app-header__item">
+            <strong>연결 상태</strong>:
+            <span :class="['app-header__status-value', wsConnectionStatusClassName]">
+              {{ wsConnectionStatusLabel }}
+            </span>
+          </p>
           <p class="app-header__item">
             <strong>시뮬레이션</strong>:
             <span
@@ -188,6 +226,10 @@ async function runSimulationAction(actionType) {
 
 .app-header__status-value--running {
   color: var(--color-status-normal);
+}
+
+.app-header__status-value--warning {
+  color: var(--color-status-warning);
 }
 
 .app-header__status-value--stopped {
