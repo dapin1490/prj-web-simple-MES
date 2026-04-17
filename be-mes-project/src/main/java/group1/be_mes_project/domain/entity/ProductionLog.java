@@ -16,7 +16,6 @@ import java.time.LocalDateTime;
 public class ProductionLog {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "log_id")
   private Long logId;
 
@@ -42,12 +41,14 @@ public class ProductionLog {
   protected ProductionLog() {}
 
   public ProductionLog(
+      Long logId,
       WorkOrder workOrder,
       LocalDateTime timestamp,
       Integer crTemp,
       Double tempSp,
       Double tempPv,
       Integer speed) {
+    this.logId = logId;
     this.workOrder = workOrder;
     this.timestamp = timestamp;
     this.crTemp = crTemp;

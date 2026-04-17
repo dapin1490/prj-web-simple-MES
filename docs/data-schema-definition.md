@@ -7,6 +7,7 @@
 - 목적: 수주(Planning)와 현장 실행(Execution) 데이터 간의 단절 없는 정보 흐름 구현.
 - 설계 원칙: 에스윈텍의 주문 체계를 상위 엔티티로, 의류 공정의 로트(LOT) 실적을 하위 엔티티로 구성하여 1:N 관계를 형성함.
 - 데이터 출처: 에스윈텍 고객사 주문량 데이터셋, 의류 공정최적화 AI 데이터셋.
+- 적재 방식: 백엔드 시작 시 `src/main/resources/data/` 하위 CSV를 순차 적재함. 적재 순서는 FK 제약을 준수하여 **Products → SalesOrders → WorkOrders → ProductionLogs → Inspections** 순서를 따른다.
 
 ### 2. 상세 테이블 명세
 
@@ -45,28 +46,28 @@
 
 ### 2.4 공정 실행 로그 (ProductionLogs)
 
-현장 설비에서 1분 주기로 수집되는 시계열 데이터입니다.
+현장 설비에서 1분 주기로 수집되는 시계열 데이터입니다. 대량 로그는 배치 적재(1000건 단위)를 기준으로 처리합니다.
 
-| 컬럼명 | 타입 | 설명 | 출처 데이터 항목 |
-| --- | --- | --- | --- |
-| log_id (PK) | BIGINT | 로그 고유 ID | (자동 생성) |
-| wo_id (FK) | VARCHAR | 작업 지시 외래키 | 의류 `LOT_NO` |
-| timestamp | DATETIME | 수집 일시 (1분 단위) | 의류 `INSRT_DT` |
-| cr_temp | INT | 설비 가동 목표온도(℃) | 의류 `CR_TEMP` |
-| temp_sp | FLOAT | 설비 가동 지시온도(℃) | 의류 `TRD_TEMP_SP` |
-| temp_pv | FLOAT | 설비 현재 온도(실측, ℃) | 의류 `TRD_TEMP_PV` |
-| speed | INT | 설비 가동 속도 | 의류 `TRD_SPEED1` |
+| 컬럼명 | 타입 | 설명 | 출처 데이터 항목 | CSV 제공 여부 |
+| --- | --- | --- | --- | --- |
+| log_id (PK) | BIGINT | 로그 고유 ID | CSV `log_id` 컬럼 | ✅ CSV에 포함 |
+| wo_id (FK) | VARCHAR | 작업 지시 외래키 | 의류 `LOT_NO` | CSV `wo_id` |
+| timestamp | DATETIME | 수집 일시 (1분 단위), 포맷 `yyyy-MM-dd HH:mm:ss` | 의류 `INSRT_DT` | CSV `timestamp` |
+| cr_temp | INT | 설비 가동 목표온도(℃) | 의류 `CR_TEMP` | CSV `cr_temp` |
+| temp_sp | FLOAT | 설비 가동 지시온도(℃) | 의류 `TRD_TEMP_SP` | CSV `temp_sp` |
+| temp_pv | FLOAT | 설비 현재 온도(실측, ℃) | 의류 `TRD_TEMP_PV` | CSV `temp_pv` |
+| speed | INT | 설비 가동 속도 | 의류 `TRD_SPEED1` | CSV `speed` |
 
 ### 2.5 품질 검사 결과 (Inspections)
 
-공정 완료 후 기록되는 최종 품질 데이터입니다.
+공정 완료 후 기록되는 최종 품질 데이터입니다. 품질 판정 기준은 **color_de < 1.0 = Pass**, **color_de >= 1.0 = Fail** 입니다.
 
-| 컬럼명 | 타입 | 설명 | 출처 데이터 항목 |
-| --- | --- | --- | --- |
-| insp_id (PK) | VARCHAR | 검사 고유 번호 | (자동 생성) |
-| wo_id (FK) | VARCHAR | 작업 지시 외래키 | 의류 `lot_no` |
-| color_de | FLOAT | 종합 색상 차이 지수 | 의류 `염색 색차 DE` |
-| pass_fail | BOOLEAN | 합격 여부 (DE < 1.0 기준) | 의류 `염색 색차 DE` 판정 |
+| 컬럼명 | 타입 | 설명 | 출처 데이터 항목 | CSV 제공 여부 |
+| --- | --- | --- | --- | --- |
+| insp_id (PK) | VARCHAR | 검사 고유 번호 | CSV `insp_id` 컬럼 | ✅ CSV에 포함 |
+| wo_id (FK) | VARCHAR | 작업 지시 외래키 | 의류 `lot_no` | CSV `wo_id` |
+| color_de | FLOAT | 종합 색상 차이 지수 | 의류 `염색 색차 DE` | CSV `color_de` |
+| pass_fail | BOOLEAN | 합격 여부 (DE < 1.0 기준) | 의류 `염색 색차 DE` 판정 | CSV `pass_fail` |
 
 ---
 
@@ -115,3 +116,38 @@ erDiagram
         boolean pass_fail
     }
 ```
+
+---
+
+### 4. CSV 기반 데이터 적재 구현
+
+#### 4.1 CSV 파일 위치 및 규모
+
+| 파일 | 경로 | 행 수(대략) | 용도 |
+| --- | --- | --- | --- |
+| Products | `src/main/resources/data/Products.csv` | ~100 | 제품 마스터 |
+| SalesOrders | `src/main/resources/data/SalesOrders.csv` | ~300 | 수주 정보 |
+| WorkOrders | `src/main/resources/data/WorkOrders.csv` | ~500 | 작업 지시 |
+| ProductionLogs | `src/main/resources/data/ProductionLogs.csv` | ~560,000 | 생산 로그 (대용량) |
+| Inspections | `src/main/resources/data/Inspections.csv` | ~400 | 품질 검사 |
+
+#### 4.2 적재 프로세스 (5단계 순차 로드)
+
+1. `Products` 적재
+2. `SalesOrders` 적재 (`product_id` FK 검증)
+3. `WorkOrders` 적재 (`order_id` FK 검증)
+4. `ProductionLogs` 적재 (`wo_id` FK 검증, 배치 처리)
+5. `Inspections` 적재 (`wo_id` FK 검증)
+
+#### 4.3 시뮬레이션 처리
+
+- 초기화 시점(`@PostConstruct`)에 `ProductionLogs.csv`를 메모리에 로드
+- 시뮬레이션 시작 시 메모리 행을 순차 소비하여 재삽입/푸시 수행
+- 상태 응답의 `total_rows`는 **DB 적재 건수**가 아니라 **메모리에 로드된 CSV 총 행 수**를 의미
+
+#### 4.4 주의사항
+
+- `ProductionLogs.csv`는 초기 적재와 시뮬레이션 입력 양쪽에 사용됨
+- `log_id`, `insp_id`는 현재 구현에서 자동생성 대신 CSV 제공 값을 사용함
+
+
