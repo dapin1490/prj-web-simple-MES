@@ -7,6 +7,7 @@ const DEFAULT_MAX_REALTIME_MESSAGE_COUNT = 50
 const DEFAULT_MAX_EQUIPMENT_ALERT_COUNT = 30
 const DEFAULT_RECONNECT_DELAY_MS = 3000
 const DEFAULT_WS_ENDPOINT = 'http://localhost:8080/ws-mes'
+const DEFAULT_EQUIPMENT_ALERT_COOLDOWN_MS = 10000
 
 function getWebSocketEndpoint() {
   const configuredEndpoint = import.meta.env.VITE_WS_ENDPOINT
@@ -40,6 +41,14 @@ function getReconnectDelayMs() {
   return DEFAULT_RECONNECT_DELAY_MS
 }
 
+function getEquipmentAlertCooldownMs() {
+  const configuredCooldownMs = Number(import.meta.env.VITE_WS_EQUIPMENT_ALERT_COOLDOWN_MS)
+  if (Number.isFinite(configuredCooldownMs) && configuredCooldownMs >= 0) {
+    return configuredCooldownMs
+  }
+  return DEFAULT_EQUIPMENT_ALERT_COOLDOWN_MS
+}
+
 function getDevFixtureTrendIntervalMs() {
   const configuredInterval = Number(import.meta.env.VITE_DEV_FIXTURE_TREND_INTERVAL_MS)
   if (Number.isFinite(configuredInterval) && configuredInterval > 0) {
@@ -57,10 +66,13 @@ export function useProductionTrendSocket() {
   const equipmentAlertList = ref([])
   const reconnectAttemptCount = ref(0)
   const reconnectDelayMs = getReconnectDelayMs()
+  const equipmentAlertCooldownMs = getEquipmentAlertCooldownMs()
   let stompClient = null
   let topicSubscription = null
   let equipmentAlertSubscription = null
   let manualDisconnectRequested = false
+  /** @type {Map<string, number>} */
+  const equipmentAlertLastSeenAtMap = new Map()
   /** @type {ReturnType<typeof setInterval> | null} */
   let devFixtureTrendIntervalId = null
 
@@ -84,6 +96,19 @@ export function useProductionTrendSocket() {
             message: String(rawAlert),
             timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
           }
+
+    const alertCooldownKey = [
+      String(normalizedAlert.machine_id),
+      String(normalizedAlert.wo_id),
+      String(normalizedAlert.alert_type),
+      String(normalizedAlert.message),
+    ].join('|')
+    const nowTimeMs = Date.now()
+    const lastSeenAtMs = equipmentAlertLastSeenAtMap.get(alertCooldownKey) ?? 0
+    if (equipmentAlertCooldownMs > 0 && nowTimeMs - lastSeenAtMs < equipmentAlertCooldownMs) {
+      return
+    }
+    equipmentAlertLastSeenAtMap.set(alertCooldownKey, nowTimeMs)
 
     latestEquipmentAlert.value = normalizedAlert
     equipmentAlertList.value = [normalizedAlert, ...equipmentAlertList.value].slice(
@@ -250,6 +275,7 @@ export function useProductionTrendSocket() {
   function clearEquipmentAlerts() {
     latestEquipmentAlert.value = null
     equipmentAlertList.value = []
+    equipmentAlertLastSeenAtMap.clear()
   }
 
   return {
