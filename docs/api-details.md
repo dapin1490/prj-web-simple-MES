@@ -1,6 +1,6 @@
-심플 MES(Simplified MES) 프로젝트의 백엔드와 프론트엔드 간 메시지 인터페이스를 정의한 상세 명세서입니다. 본 명세서는 사전 전처리된 통합 데이터셋을 기반으로 하며, 조회·제어·실시간 스트리밍을 STOMP/WebSocket으로 통일합니다.
+심플 MES(Simplified MES) 프로젝트의 백엔드와 프론트엔드 간 메시지 인터페이스를 정의한 상세 명세서입니다. 본 명세서는 사전 전처리된 통합 데이터셋을 기반으로 하며, 조회·제어·실시간 스트리밍을 STOMP/WebSocket으로 통일합니다. Planning·Execution 관련 요청·응답 예시와 클라이언트 테스트 절차는 본 문서 부록에 수록한다.
 
-## 심플 MES 메시지 상세 명세서 (v1.1)
+## 심플 MES 메시지 상세 명세서 (v1.2)
 
 ### 1. 공통 사항
 
@@ -10,13 +10,15 @@
 - User Destination Prefix: `/user`
 - 통신 프로토콜: STOMP/WebSocket (SockJS fallback 포함)
 - 데이터 포맷: JSON (UTF-8).
-- **JSON 필드명**: 요청·응답 본문의 키는 `docs/data-schema-definition.md` §2의 컬럼명과 동일한 스네이크 케이스를 사용한다 (`wo_id`, `order_qty`, `pass_fail` 등).
+- **JSON 필드명**: 요청·응답 본문의 키는 `docs/data-schema-definition.md` 절 2의 컬럼명과 동일한 스네이크 케이스를 사용한다 (`wo_id`, `order_qty`, `pass_fail` 등).
 - 응답 규격:
     - `success`: 성공 여부 (boolean).
     - `data`: 실제 데이터 객체 혹은 배열.
     - `message`: 오류 발생 시 원인 메시지(성공 시에는 빈 문자열 또는 생략 가능, 팀에서 통일).
 - 오류 처리: 실패는 `success: false`와 `message`로 전달하며, 필요 시 `/user/queue/errors`를 구독해 에러 메시지를 수신한다.
 - 인증·인가: SRS상 로그인·권한(Admin/Operator) 플로우는 시연용 클라이언트 로컬 역할 선택으로만 형식적으로 표현하며, 이번 프로젝트 범위에서는 서버 측 인증·인가 및 REST/STOMP/WebSocket 접근 제어를 구현하지 않는다.
+
+개발 환경에서의 접속 URL 예시는 `ws://{호스트}:{포트}/ws-mes` 형태이며, 로컬에서 흔히 `ws://localhost:8080/ws-mes` 로 연결한다. 호스트·포트는 배포 환경에 맞게 바꾼다.
 
 ### 1.1. 목록·필터·페이지네이션
 
@@ -73,7 +75,7 @@
 
 - Endpoint: `/ws-mes` (SockJS fallback 허용)
 - Topic (Subscribe): `/topic/production-trend`
-- 데이터 내용: `docs/data-schema-definition.md` §2.4 `ProductionLogs`와 동일한 스네이크 케이스 필드를 전제로 하며, 진척률 등 파생 값은 아래와 같이 포함할 수 있다.
+- 데이터 내용: `docs/data-schema-definition.md` 절 2.4 `ProductionLogs`와 동일한 스네이크 케이스 필드를 전제로 하며, 진척률 등 파생 값은 아래와 같이 포함할 수 있다.
 
     ```json
     {
@@ -104,4 +106,232 @@
     }
     ```
 
-`/user/queue/execution/production/logs` 응답의 각 요소도 §2.4 컬럼과 동일한 키를 사용한다.
+`/user/queue/execution/production/logs` 응답의 각 요소도 `data-schema-definition.md` 절 2.4 컬럼과 동일한 키를 사용한다.
+
+---
+
+## 부록
+
+### 부록 A. STOMP 연결·공통 envelope 예시
+
+클라이언트가 STOMP `CONNECT` 시 보낼 수 있는 헤더 예시는 다음과 같다.
+
+```json
+{"accept-version":"1.2","host":"localhost"}
+```
+
+공통 응답 envelope 예시는 다음과 같다.
+
+```json
+{
+  "success": true,
+  "data": [],
+  "message": null
+}
+```
+
+### 부록 B. Planning·Execution 요청·응답 예시
+
+아래는 절 2·3의 destination과 맞춘 예시이며, 필드 값은 `data-schema-definition.md` 절 2와 일치하도록 한다.
+
+#### B.1 제품 목록 조회
+
+- Send: `/app/planning/products`, Subscribe: `/user/queue/planning/products`, 본문: `{}`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "product_id": "P-1001",
+      "name": "고신축 폴리 원단",
+      "category": "Dyeing",
+      "safety_stock": 120
+    }
+  ],
+  "message": null
+}
+```
+
+#### B.2 수주 현황 조회
+
+- Send: `/app/planning/orders`, Subscribe: `/user/queue/planning/orders`, 본문: `{}`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "order_id": "SO-20220101-001",
+      "product_id": "P-1001",
+      "order_date": "2022-01-01",
+      "order_qty": 400.0
+    }
+  ],
+  "message": null
+}
+```
+
+#### B.3 특정 제품 수주 조회
+
+- Send: `/app/planning/orders/by-product`, Subscribe: `/user/queue/planning/orders/by-product`
+
+```json
+{
+  "product_id": "P-1001"
+}
+```
+
+`product_id`가 없으면 예를 들어 다음과 같은 응답이 올 수 있다.
+
+```json
+{
+  "success": false,
+  "data": null,
+  "message": "product_id is required"
+}
+```
+
+#### B.4 작업 지시 목록 조회
+
+- Send: `/app/execution/work-orders`, Subscribe: `/user/queue/execution/work-orders`, 본문: `{}`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "wo_id": "F2205040066",
+      "order_id": "SO-20220101-001",
+      "planned_qty": 400.0,
+      "machine_id": "M-01"
+    }
+  ],
+  "message": null
+}
+```
+
+#### B.5 특정 작업 지시 생산 로그 조회
+
+- Send: `/app/execution/production/logs`, Subscribe: `/user/queue/execution/production/logs`
+
+```json
+{
+  "wo_id": "F2205040066"
+}
+```
+
+`data` 배열 원소는 `data-schema-definition.md` 절 2.4 `ProductionLogs` 컬럼을 갖춘다. 예시는 다음과 같다.
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "log_id": 1,
+      "wo_id": "F2205040066",
+      "timestamp": "2022-05-04 10:30:00",
+      "cr_temp": 70,
+      "temp_sp": 70.0,
+      "temp_pv": 68.4,
+      "speed": 62
+    }
+  ],
+  "message": null
+}
+```
+
+`wo_id`가 없으면 예를 들어 다음과 같은 응답이 올 수 있다.
+
+```json
+{
+  "success": false,
+  "data": null,
+  "message": "wo_id is required"
+}
+```
+
+#### B.6 진척률 조회
+
+- Send: `/app/execution/production/progress`, Subscribe: `/user/queue/execution/production/progress`, 본문: `{}`
+
+```json
+{
+  "success": true,
+  "data": {
+    "progress": 0.6,
+    "work_orders": [
+      {
+        "wo_id": "F2205040066",
+        "progress": 0.8
+      }
+    ]
+  },
+  "message": null
+}
+```
+
+### 부록 C. 진척률 산출 참고
+
+절 3의 진척률 집계를 구현할 때 참고할 수 있는 산출 예시는 다음과 같다. 배포·구현에 따라 다를 수 있으며 본문 표(절 3)가 우선한다.
+
+- 작업지시별 progress:
+  - `t_current` = 해당 `wo_id`의 현재 적재 로그 건수
+  - `t_total` = `WorkOrders.planned_qty`
+  - `P = min(100, (t_current / t_total) * 100)` (소수점 한 자리 반올림)
+- 전체 progress: 작업지시별 progress 평균
+
+### 부록 D. 클라이언트 도구 입력 예시 (Postman 등)
+
+- URL 예시: `ws://localhost:8080/ws-mes`
+- Connect Type: `STOMP`
+- STOMP connect header: 부록 A와 동일 JSON 사용 가능
+
+Planning:
+
+| 동작 | Subscribe | Send destination | Message content |
+| --- | --- | --- | --- |
+| 제품 목록 | `/user/queue/planning/products` | `/app/planning/products` | `{}` |
+| 수주 현황 | `/user/queue/planning/orders` | `/app/planning/orders` | `{}` |
+| 특정 제품 수주 | `/user/queue/planning/orders/by-product` | `/app/planning/orders/by-product` | `{"product_id":"P-1001"}` |
+
+Execution:
+
+| 동작 | Subscribe | Send destination | Message content |
+| --- | --- | --- | --- |
+| 작업 지시 목록 | `/user/queue/execution/work-orders` | `/app/execution/work-orders` | `{}` |
+| 생산 로그 | `/user/queue/execution/production/logs` | `/app/execution/production/logs` | `{"wo_id":"F2205040066"}` |
+| 진척률 | `/user/queue/execution/production/progress` | `/app/execution/production/progress` | `{}` |
+
+### 부록 E. 관련 문서
+
+- `docs/data-schema-definition.md`
+- `docs/system-architecture-design.md`
+- `docs/functional-requirement-statement.md`
+
+### 부록 F. 구현 코드 위치 (참고)
+
+다음 경로는 과거 백엔드 초안을 정리한 것이다. 저장소 최신 트리와 다를 수 있으므로, 실제 클래스·패키지는 코드 검색으로 확인한다.
+
+Planning:
+
+- `src/main/java/group1/be_mes_project/controller/PlanningStompController.java`
+- `src/main/java/group1/be_mes_project/service/PlanningService.java`
+- `src/main/java/group1/be_mes_project/service/impl/PlanningServiceImpl.java`
+- `src/main/java/group1/be_mes_project/domain/repository/ProductRepository.java`
+- `src/main/java/group1/be_mes_project/domain/repository/SalesOrderRepository.java`
+- `src/main/java/group1/be_mes_project/config/PlanningSeedData.java`
+
+Execution:
+
+- `src/main/java/group1/be_mes_project/controller/ExecutionStompController.java`
+- `src/main/java/group1/be_mes_project/service/ExecutionService.java`
+- `src/main/java/group1/be_mes_project/service/impl/ExecutionServiceImpl.java`
+- `src/main/java/group1/be_mes_project/domain/repository/WorkOrderRepository.java`
+- `src/main/java/group1/be_mes_project/domain/repository/ProductionLogRepository.java`
+- `src/main/java/group1/be_mes_project/dto/execution/ExecutionLogFilterDto.java`
+
+공통:
+
+- `src/main/java/group1/be_mes_project/config/MesWebSocketConfig.java`
+- `src/main/java/group1/be_mes_project/dto/ApiResponse.java`
