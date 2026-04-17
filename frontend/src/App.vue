@@ -17,6 +17,8 @@ const simulationStatusLabel = ref('정지')
 const simulationActionInProgress = ref(false)
 const simulationStatusMessage = ref('')
 const simulationStatusTone = ref('normal')
+const themeMode = ref('light')
+const THEME_STORAGE_KEY = 'mes-theme-mode'
 
 const isSimulationRunning = computed(() => simulationStatusLabel.value === '가동 중')
 const {
@@ -48,8 +50,23 @@ const wsConnectionStatusClassName = computed(() => {
 })
 
 onMounted(() => {
+  const savedThemeMode = localStorage.getItem(THEME_STORAGE_KEY)
+  if (savedThemeMode === 'light' || savedThemeMode === 'dark') {
+    themeMode.value = savedThemeMode
+  } else {
+    themeMode.value = 'light'
+  }
+  document.documentElement.setAttribute('data-theme', themeMode.value)
   connectProductionTrendSocket()
 })
+
+const themeToggleLabel = computed(() => (themeMode.value === 'light' ? '다크 테마' : '라이트 테마'))
+
+function toggleThemeMode() {
+  themeMode.value = themeMode.value === 'light' ? 'dark' : 'light'
+  document.documentElement.setAttribute('data-theme', themeMode.value)
+  localStorage.setItem(THEME_STORAGE_KEY, themeMode.value)
+}
 
 function setSimulationStatusMessage(message, tone = 'normal') {
   simulationStatusMessage.value = message
@@ -147,6 +164,9 @@ async function runSimulationAction(actionType) {
         </div>
 
         <div class="app-header__actions">
+          <button type="button" class="app-header__button" @click="toggleThemeMode">
+            {{ themeToggleLabel }}
+          </button>
           <button
             type="button"
             class="app-header__button"

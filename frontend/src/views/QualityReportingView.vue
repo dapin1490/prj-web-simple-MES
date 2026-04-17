@@ -4,6 +4,8 @@ import { useAsyncRequest } from '@/composables/useAsyncRequest'
 import ColorDeScatterChart from '@/components/ColorDeScatterChart.vue'
 import { getInspections, getReportByWorkOrderId } from '@/api/qualityApi'
 
+const QUALITY_ALERT_COLOR_DE_THRESHOLD = 1.0
+
 const selectedWorkOrderId = ref('')
 
 const {
@@ -64,6 +66,23 @@ const colorDeScatterPoints = computed(() => {
       }
     })
     .filter((point) => point !== null)
+})
+
+const qualityAlertList = computed(() => {
+  return inspectionList.value
+    .map((inspectionRecord, index) => {
+      const colorDeValue = Number(inspectionRecord.color_de)
+      if (!Number.isFinite(colorDeValue) || colorDeValue < QUALITY_ALERT_COLOR_DE_THRESHOLD) {
+        return null
+      }
+      return {
+        id: String(inspectionRecord.insp_id ?? `quality-alert-${index}`),
+        wo_id: String(inspectionRecord.wo_id ?? '-'),
+        color_de: colorDeValue,
+        message: `품질 이상 감지: color_de=${colorDeValue.toFixed(2)} (기준 ${QUALITY_ALERT_COLOR_DE_THRESHOLD.toFixed(1)} 이상)`,
+      }
+    })
+    .filter((qualityAlertItem) => qualityAlertItem !== null)
 })
 
 const normalizedReport = computed(() => {
@@ -154,6 +173,37 @@ function formatJsonBlock(value) {
         다시 조회
       </button>
     </header>
+
+    <section class="feature-view__panel">
+      <h3>품질 이상 알림</h3>
+      <p class="feature-view__hint">
+        기준: <code>color_de &gt;= {{ QUALITY_ALERT_COLOR_DE_THRESHOLD.toFixed(1) }}</code>
+      </p>
+      <p v-if="inspectionsLoading">품질 이상 알림 계산 중...</p>
+      <p v-else-if="qualityAlertList.length === 0">감지된 품질 이상 알림이 없습니다.</p>
+      <div v-else class="feature-view__table-wrap">
+        <table class="feature-view__table">
+          <thead>
+            <tr>
+              <th>wo_id</th>
+              <th>color_de</th>
+              <th>alert_type</th>
+              <th>message</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="qualityAlert in qualityAlertList" :key="qualityAlert.id">
+              <td>{{ qualityAlert.wo_id }}</td>
+              <td>{{ qualityAlert.color_de.toFixed(2) }}</td>
+              <td>
+                <span class="feature-view__alert-badge feature-view__alert-badge--quality">QUALITY_COLOR_DE_HIGH</span>
+              </td>
+              <td>{{ qualityAlert.message }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
     <section class="feature-view__panel">
       <h3>품질 분포 (color_de 산점도)</h3>
@@ -330,6 +380,21 @@ function formatJsonBlock(value) {
   background: var(--color-background-soft);
   overflow: auto;
   max-height: 16rem;
+}
+
+.feature-view__alert-badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--feature-view-alert-badge-color);
+  background: var(--feature-view-alert-badge-background);
+}
+
+.feature-view__alert-badge--quality {
+  --feature-view-alert-badge-color: var(--color-alert-badge-quality-text);
+  --feature-view-alert-badge-background: var(--color-alert-badge-quality-bg);
 }
 
 .report-viewer {
