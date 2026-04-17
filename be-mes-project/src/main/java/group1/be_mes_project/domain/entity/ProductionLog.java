@@ -27,6 +27,12 @@ public class ProductionLog {
   @Column(name = "timestamp", nullable = false)
   private LocalDateTime timestamp;
 
+  @Column(name = "cr_temp", nullable = false)
+  private Integer crTemp;
+
+  @Column(name = "temp_sp", nullable = false)
+  private Double tempSp;
+
   @Column(name = "temp_pv", nullable = false)
   private Double tempPv;
 
@@ -35,9 +41,17 @@ public class ProductionLog {
 
   protected ProductionLog() {}
 
-  public ProductionLog(WorkOrder workOrder, LocalDateTime timestamp, Double tempPv, Integer speed) {
+  public ProductionLog(
+      WorkOrder workOrder,
+      LocalDateTime timestamp,
+      Integer crTemp,
+      Double tempSp,
+      Double tempPv,
+      Integer speed) {
     this.workOrder = workOrder;
     this.timestamp = timestamp;
+    this.crTemp = crTemp;
+    this.tempSp = tempSp;
     this.tempPv = tempPv;
     this.speed = speed;
   }
@@ -52,6 +66,14 @@ public class ProductionLog {
 
   public LocalDateTime getTimestamp() {
     return timestamp;
+  }
+
+  public Integer getCrTemp() {
+    return crTemp;
+  }
+
+  public Double getTempSp() {
+    return tempSp;
   }
 
   public Double getTempPv() {
