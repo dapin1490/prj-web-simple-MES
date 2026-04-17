@@ -1,5 +1,7 @@
 import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client/dist/sockjs'
+import { getDevFixtureResponse } from '@/devFixtures/getDevFixtureResponse'
+import { isDevFixturesMode } from '@/devFixtures/isDevFixturesMode'
 
 /**
  * STOMP 호출 공통 모듈.
@@ -28,7 +30,7 @@ const REQUEST_DESTINATION_BY_METHOD_AND_PATH = {
   'GET /orders/:productId': '/app/planning/orders/by-product',
   'GET /work-orders': '/app/execution/work-orders',
   'GET /production/progress': '/app/execution/production/progress',
-  'GET /production/logs/:workOrderId': '/app/execution/production/logs',
+  'GET /production/logs/:workOrderId': '/app/execution/production/logs/by-wo',
   'GET /inspections': '/app/quality/inspections',
   'GET /reports/:workOrderId': '/app/quality/reports',
   'POST /simulation/start': '/app/simulation/start',
@@ -42,7 +44,7 @@ const RESPONSE_DESTINATION_BY_METHOD_AND_PATH = {
   'GET /orders/:productId': '/user/queue/planning/orders/by-product',
   'GET /work-orders': '/user/queue/execution/work-orders',
   'GET /production/progress': '/user/queue/execution/production/progress',
-  'GET /production/logs/:workOrderId': '/user/queue/execution/production/logs',
+  'GET /production/logs/:workOrderId': '/user/queue/execution/production/logs/by-wo',
   'GET /inspections': '/user/queue/quality/inspections',
   'GET /reports/:workOrderId': '/user/queue/quality/reports',
   'POST /simulation/start': '/user/queue/simulation/state',
@@ -224,6 +226,15 @@ function ensureResponseSubscription(responseDestination) {
  * @returns {Promise<unknown>}
  */
 export async function apiRequest(method, path, options = {}) {
+  if (isDevFixturesMode()) {
+    try {
+      return await getDevFixtureResponse(method, path, options)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      throw new StompClientError(message)
+    }
+  }
+
   const { requestDestination, responseDestination } = resolveDestinationPair(method, path)
   await ensureStompConnection()
   ensureResponseSubscription(responseDestination)
