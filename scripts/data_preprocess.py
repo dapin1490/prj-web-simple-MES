@@ -104,7 +104,19 @@ def load_input_frames(input_directory: Path) -> InputFrames:
     ensure_required_columns(
         "integrated_manufacture_data.csv",
         integrated_manufacture_frame,
-        ["LOT_NO", "WC_CD", "RESOURCE_CD", "INSRT_DT", "SEQ_NO", "TRD_TEMP_PV", "TRD_SPEED1", "염색 가동 길이", "염색 색차 DE"],
+        [
+            "LOT_NO",
+            "WC_CD",
+            "RESOURCE_CD",
+            "INSRT_DT",
+            "SEQ_NO",
+            "CR_TEMP",
+            "TRD_TEMP_SP",
+            "TRD_TEMP_PV",
+            "TRD_SPEED1",
+            "염색 가동 길이",
+            "염색 색차 DE",
+        ],
     )
 
     return InputFrames(
@@ -125,6 +137,8 @@ def build_reference_frames(
     integrated_manufacture_frame["machine_id"] = (
         integrated_manufacture_frame["RESOURCE_CD"].astype(str).str.strip()
     )
+    integrated_manufacture_frame["cr_temp"] = to_int_series(integrated_manufacture_frame["CR_TEMP"])
+    integrated_manufacture_frame["temp_sp"] = to_float_series(integrated_manufacture_frame["TRD_TEMP_SP"])
     integrated_manufacture_frame["temp_pv"] = to_float_series(integrated_manufacture_frame["TRD_TEMP_PV"])
     integrated_manufacture_frame["speed"] = to_int_series(integrated_manufacture_frame["TRD_SPEED1"])
     integrated_manufacture_frame["product_id"] = (
@@ -237,14 +251,16 @@ def create_work_orders_frame(
 
 def create_production_logs_frame(integrated_manufacture_frame: pd.DataFrame) -> pd.DataFrame:
     production_logs_frame = integrated_manufacture_frame[
-        ["wo_id", "timestamp", "temp_pv", "speed"]
+        ["wo_id", "timestamp", "cr_temp", "temp_sp", "temp_pv", "speed"]
     ].copy()
     production_logs_frame = production_logs_frame.sort_values(["timestamp", "wo_id"]).reset_index(
         drop=True
     )
     production_logs_frame["log_id"] = production_logs_frame.index + 1
 
-    return production_logs_frame[["log_id", "wo_id", "timestamp", "temp_pv", "speed"]]
+    return production_logs_frame[
+        ["log_id", "wo_id", "timestamp", "cr_temp", "temp_sp", "temp_pv", "speed"]
+    ]
 
 
 def create_inspections_frame(integrated_manufacture_frame: pd.DataFrame) -> pd.DataFrame:
