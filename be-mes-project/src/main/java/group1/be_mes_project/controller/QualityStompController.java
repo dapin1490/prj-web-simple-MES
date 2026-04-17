@@ -1,10 +1,12 @@
 package group1.be_mes_project.controller;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import group1.be_mes_project.dto.ApiResponse;
 import group1.be_mes_project.dto.quality.InspectionDto;
 import group1.be_mes_project.dto.quality.ReportDto;
 import group1.be_mes_project.service.QualityService;
 import java.util.List;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.annotation.SendToUser;
@@ -39,10 +41,17 @@ public class QualityStompController {
     return ApiResponse.success(report);
   }
 
+  @MessageExceptionHandler(Exception.class)
+  @SendToUser("/queue/errors")
+  public ApiResponse<Void> handleWebSocketException(Exception exception) {
+    return ApiResponse.fail("Unexpected error: " + exception.getMessage());
+  }
+
   /**
    * 요청 바디에서 wo_id를 받기 위한 간단한 DTO
    */
   public static class QualityReportRequest {
+    @JsonProperty("wo_id")
     private String woId;
 
     public String getWoId() {

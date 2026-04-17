@@ -27,8 +27,8 @@ public class ExecutionStompController {
     return ApiResponse.success(executionService.getWorkOrders());
   }
 
-  @MessageMapping("/execution/production/logs/by-wo")
-  @SendToUser("/queue/execution/production/logs/by-wo")
+  @MessageMapping("/execution/production/logs")
+  @SendToUser("/queue/execution/production/logs")
   public ApiResponse<List<ProductionLogDto>> getProductionLogsByWoId(ExecutionLogFilterDto filter) {
     if (filter == null || filter.woId() == null || filter.woId().isBlank()) {
       return ApiResponse.fail("wo_id is required");
