@@ -57,7 +57,7 @@ function getDevFixtureTrendIntervalMs() {
   return 1500
 }
 
-export function useProductionTrendSocket() {
+function createProductionTrendSocketStore() {
   const connectionState = ref('disconnected')
   const lastErrorMessage = ref('')
   const lastReceivedMessage = ref(null)
@@ -295,4 +295,13 @@ export function useProductionTrendSocket() {
     clearReceivedMessages,
     clearEquipmentAlerts,
   }
+}
+
+let productionTrendSocketStore = null
+
+export function useProductionTrendSocket() {
+  if (productionTrendSocketStore === null) {
+    productionTrendSocketStore = createProductionTrendSocketStore()
+  }
+  return productionTrendSocketStore
 }
