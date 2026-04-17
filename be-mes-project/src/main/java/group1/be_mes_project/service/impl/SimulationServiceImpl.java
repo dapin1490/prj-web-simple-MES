@@ -4,8 +4,10 @@ import group1.be_mes_project.domain.entity.ProductionLog;
 import group1.be_mes_project.domain.entity.WorkOrder;
 import group1.be_mes_project.domain.repository.ProductionLogRepository;
 import group1.be_mes_project.domain.repository.WorkOrderRepository;
+import group1.be_mes_project.dto.simulation.EquipmentAlertDto;
 import group1.be_mes_project.dto.simulation.ProductionTrendMessageDto;
 import group1.be_mes_project.dto.simulation.SimulationStatusDto;
+import group1.be_mes_project.service.EquipmentAlertService;
 import group1.be_mes_project.service.SimulationService;
 import group1.be_mes_project.simulation.SimulationRuntimeState;
 import jakarta.annotation.PostConstruct;
@@ -31,6 +33,7 @@ import org.springframework.stereotype.Service;
 public class SimulationServiceImpl implements SimulationService {
 
   private static final String TREND_TOPIC = "/topic/production-trend";
+  private static final String ALERT_TOPIC = "/topic/equipment-alert";
   private static final DateTimeFormatter CSV_TIMESTAMP_FORMATTER =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -38,6 +41,7 @@ public class SimulationServiceImpl implements SimulationService {
   private final WorkOrderRepository workOrderRepository;
   private final ProductionLogRepository productionLogRepository;
   private final SimpMessagingTemplate messagingTemplate;
+  private final EquipmentAlertService equipmentAlertService;
 
   private final String simulationSourcePath;
   private final List<SimulationRow> simulationRows = new ArrayList<>();
@@ -47,11 +51,13 @@ public class SimulationServiceImpl implements SimulationService {
       WorkOrderRepository workOrderRepository,
       ProductionLogRepository productionLogRepository,
       SimpMessagingTemplate messagingTemplate,
+      EquipmentAlertService equipmentAlertService,
       @Value("${mes.simulation.source-path:}") String simulationSourcePath) {
     this.runtimeState = runtimeState;
     this.workOrderRepository = workOrderRepository;
     this.productionLogRepository = productionLogRepository;
     this.messagingTemplate = messagingTemplate;
+    this.equipmentAlertService = equipmentAlertService;
     this.simulationSourcePath = simulationSourcePath;
   }
 
@@ -135,6 +141,19 @@ public class SimulationServiceImpl implements SimulationService {
             savedLog.getSpeed(),
             savedLog.getTimestamp(),
             progress));
+
+    // 설비 이상 감지
+    EquipmentAlertDto alert =
+        equipmentAlertService.detectAndCreateAlert(
+            workOrder.getMachineId(),
+            workOrder.getWoId(),
+            row.tempSp(),
+            row.tempPv(),
+            row.speed());
+
+    if (alert != null) {
+      messagingTemplate.convertAndSend(ALERT_TOPIC, alert);
+    }
 
     if (runtimeState.getPointer() >= simulationRows.size()) {
       runtimeState.stop();

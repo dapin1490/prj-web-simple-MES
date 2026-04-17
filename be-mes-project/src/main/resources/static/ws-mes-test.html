@@ -338,7 +338,27 @@
           </div>
           <div style="height: 8px"></div>
           <div class="example-actions">
-            <button data-example="simulation-status">Status</button>
+            <button data-example="simulation-state">State</button>
+            <button data-example="simulation-trend-topic">Trend Topic</button>
+            <button data-example="simulation-alert-topic">Alert Topic</button>
+          </div>
+        </div>
+
+        <div class="example-group">
+          <h4>Quality</h4>
+          <div class="example-actions">
+            <button data-example="quality-inspections">Inspections</button>
+            <button data-example="quality-reports">Report by wo_id</button>
+          </div>
+        </div>
+
+        <div class="example-group">
+          <h4>One-click Scenarios</h4>
+          <div class="example-actions">
+            <button data-scenario="simulation-trend-topic">Run Trend</button>
+            <button data-scenario="simulation-alert-topic">Run Alert</button>
+            <button data-scenario="quality-inspections">Run Inspections</button>
+            <button data-scenario="quality-reports">Run Report</button>
           </div>
         </div>
 
@@ -666,10 +686,30 @@
           sendDestination: '/app/simulation/reset',
           messageContent: '{}',
         },
-        'simulation-status': {
+        'simulation-state': {
           subscribeDestination: '/user/queue/simulation/state',
           sendDestination: '/app/simulation/state',
           messageContent: '{}',
+        },
+        'simulation-trend-topic': {
+          subscribeDestination: '/topic/production-trend',
+          sendDestination: '/app/simulation/start',
+          messageContent: '{}',
+        },
+        'simulation-alert-topic': {
+          subscribeDestination: '/topic/equipment-alert',
+          sendDestination: '/app/simulation/start',
+          messageContent: '{}',
+        },
+        'quality-inspections': {
+          subscribeDestination: '/user/queue/quality/inspections',
+          sendDestination: '/app/quality/inspections',
+          messageContent: '{}',
+        },
+        'quality-reports': {
+          subscribeDestination: '/user/queue/quality/reports',
+          sendDestination: '/app/quality/reports',
+          messageContent: '{\n  "wo_id": "F2112080004"\n}',
         },
       };
 
@@ -680,6 +720,37 @@
       elements.sendDestination.value = selected.sendDestination;
       elements.messageContent.value = selected.messageContent;
       appendLog(`Loaded example: ${example}`);
+    }
+
+    function sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function waitForConnection(timeoutMs = 6000) {
+      const start = Date.now();
+      while (!connected && Date.now() - start < timeoutMs) {
+        await sleep(100);
+      }
+      if (!connected) {
+        throw new Error('Connection timeout');
+      }
+    }
+
+    async function runScenario(exampleKey) {
+      setExample(exampleKey);
+
+      if (!connected) {
+        connect();
+        await waitForConnection();
+      }
+
+      subscribeCurrent();
+      await sleep(120);
+      sendMessage();
+
+      setNotice(`시나리오 실행 완료: ${exampleKey}`);
+      showToast('시나리오 실행 완료', 'success');
+      appendLog(`Scenario executed: ${exampleKey}`);
     }
 
     elements.connectBtn.addEventListener('click', () => {
@@ -696,6 +767,11 @@
 
     document.querySelectorAll('[data-example]').forEach((button) => {
       button.addEventListener('click', () => setExample(button.dataset.example));
+    });
+    document.querySelectorAll('[data-scenario]').forEach((button) => {
+      button.addEventListener('click', () => {
+        runWithButtonBusy(button, 'Running...', async () => runScenario(button.dataset.scenario));
+      });
     });
 
     window.addEventListener('beforeunload', disconnect);
