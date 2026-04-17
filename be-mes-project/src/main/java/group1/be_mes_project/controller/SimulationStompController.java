@@ -18,25 +18,25 @@ public class SimulationStompController {
   }
 
   @MessageMapping("/simulation/start")
-  @SendToUser("/queue/simulation/status")
+  @SendToUser("/queue/simulation/state")
   public ApiResponse<SimulationStatusDto> startSimulation() {
     return ApiResponse.success(simulationService.start());
   }
 
   @MessageMapping("/simulation/stop")
-  @SendToUser("/queue/simulation/status")
+  @SendToUser("/queue/simulation/state")
   public ApiResponse<SimulationStatusDto> stopSimulation() {
     return ApiResponse.success(simulationService.stop());
   }
 
   @MessageMapping("/simulation/reset")
-  @SendToUser("/queue/simulation/status")
+  @SendToUser("/queue/simulation/state")
   public ApiResponse<SimulationStatusDto> resetSimulation() {
     return ApiResponse.success(simulationService.reset());
   }
 
-  @MessageMapping("/simulation/status")
-  @SendToUser("/queue/simulation/status")
+  @MessageMapping("/simulation/state")
+  @SendToUser("/queue/simulation/state")
   public ApiResponse<SimulationStatusDto> getSimulationStatus() {
     return ApiResponse.success(simulationService.getStatus("Current simulation status."));
   }

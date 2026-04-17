@@ -49,7 +49,7 @@
 
 | 컬럼명 | 타입 | 설명 | 출처 데이터 항목 |
 | --- | --- | --- | --- |
-| log_id (PK) | BIGINT | 로그 고유 ID | (자동 생성) |
+| log_id (PK) | BIGINT | 로그 고유 ID | CSV `log_id` |
 | wo_id (FK) | VARCHAR | 작업 지시 외래키 | 의류 `LOT_NO` |
 | timestamp | DATETIME | 수집 일시 (1분 단위) | 의류 `INSRT_DT` |
 | cr_temp | INT | 설비 가동 목표온도(℃) | 의류 `CR_TEMP` |
@@ -63,7 +63,7 @@
 
 | 컬럼명 | 타입 | 설명 | 출처 데이터 항목 |
 | --- | --- | --- | --- |
-| insp_id (PK) | VARCHAR | 검사 고유 번호 | (자동 생성) |
+| insp_id (PK) | VARCHAR | 검사 고유 번호 | CSV `insp_id` |
 | wo_id (FK) | VARCHAR | 작업 지시 외래키 | 의류 `lot_no` |
 | color_de | FLOAT | 종합 색상 차이 지수 | 의류 `염색 색차 DE` |
 | pass_fail | BOOLEAN | 합격 여부 (DE < 1.0 기준) | 의류 `염색 색차 DE` 판정 |
@@ -115,3 +115,5 @@ erDiagram
         boolean pass_fail
     }
 ```
+
+

@@ -652,23 +652,23 @@
           messageContent: '{}',
         },
         'simulation-start': {
-          subscribeDestination: '/user/queue/simulation/status',
+          subscribeDestination: '/user/queue/simulation/state',
           sendDestination: '/app/simulation/start',
           messageContent: '{}',
         },
         'simulation-stop': {
-          subscribeDestination: '/user/queue/simulation/status',
+          subscribeDestination: '/user/queue/simulation/state',
           sendDestination: '/app/simulation/stop',
           messageContent: '{}',
         },
         'simulation-reset': {
-          subscribeDestination: '/user/queue/simulation/status',
+          subscribeDestination: '/user/queue/simulation/state',
           sendDestination: '/app/simulation/reset',
           messageContent: '{}',
         },
         'simulation-status': {
-          subscribeDestination: '/user/queue/simulation/status',
-          sendDestination: '/app/simulation/status',
+          subscribeDestination: '/user/queue/simulation/state',
+          sendDestination: '/app/simulation/state',
           messageContent: '{}',
         },
       };
